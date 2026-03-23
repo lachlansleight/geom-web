@@ -15,7 +15,7 @@ class RealtimeEntity {
         GlobalApp.instance.entities[this.objectId] = this;
     }
 
-    update(deltaTime: number) {}
+    update(time: number, deltaTime: number) {}
 
     destroy() {
         console.log("Removing", this.object3D);

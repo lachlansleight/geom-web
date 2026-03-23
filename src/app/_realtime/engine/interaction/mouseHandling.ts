@@ -8,7 +8,6 @@ export const handleMouseMove = (interactor: RealtimeInteractor, e: React.MouseEv
         (e.clientX / window.innerWidth) * 2 - 1,
         (e.clientY / window.innerHeight) * -2 + 1
     );
-    console.log(e.clientX, e.clientY);
 };
 
 export const handleMouseDown = (interactor: RealtimeInteractor, e: React.MouseEvent) => {
@@ -16,19 +15,19 @@ export const handleMouseDown = (interactor: RealtimeInteractor, e: React.MouseEv
     interactor.clickStartPos.copy(interactor.interactionPos);
 
     const target = interactor.getFirstHover();
-    if(objectIsClickable(target)) {
-        if(e.button === 0) target.leftClickDown();
-        else if(e.button === 1) target.middleClickDown();
-        else if(e.button === 2) target.rightClickDown();
+    if (objectIsClickable(target)) {
+        if (e.button === 0) target.leftClickDown();
+        else if (e.button === 1) target.middleClickDown();
+        else if (e.button === 2) target.rightClickDown();
     }
 };
 
 export const handleMouseUp = (interactor: RealtimeInteractor, e: React.MouseEvent) => {
     const target = interactor.getFirstHover();
-    if(objectIsClickable(target)) {
-        if(e.button === 0) target.leftClickUp();
-        else if(e.button === 1) target.middleClickUp();
-        else if(e.button === 2) target.rightClickUp();
+    if (objectIsClickable(target)) {
+        if (e.button === 0) target.leftClickUp();
+        else if (e.button === 1) target.middleClickUp();
+        else if (e.button === 2) target.rightClickUp();
     }
 
     interactor.draggingBtn = -1;

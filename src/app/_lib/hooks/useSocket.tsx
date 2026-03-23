@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Socket, io } from "socket.io-client"
+import { Socket, io } from "socket.io-client";
 
 const useSocket = (url: string) => {
     const [socket, setSocket] = useState<Socket | null>(null);
@@ -14,6 +14,6 @@ const useSocket = (url: string) => {
     }, [url]);
 
     return socket;
-}
+};
 
 export default useSocket;

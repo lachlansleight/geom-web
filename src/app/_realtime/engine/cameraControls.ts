@@ -101,7 +101,7 @@ const useCameraControls = (config?: Partial<CameraControlsConfig>) => {
             if (!GlobalApp.instance) return;
 
             if (fullConfig.useDebugControls) {
-                // flyControls.current?.update(e.delta);
+                // flyControls.current?.update(e.time, e.delta);
                 return;
             }
 

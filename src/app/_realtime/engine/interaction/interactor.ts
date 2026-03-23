@@ -30,12 +30,15 @@ class RealtimeInteractor {
     }
 
     public getFirstHover() {
-        if(this.hoverStack.length === 0) return null;
+        if (this.hoverStack.length === 0) return null;
         return this.hoverStack[0];
     }
 
     updateRaycast(mouseX: number, mouseY: number) {
-        this.raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), GlobalApp.instance.orthoCam);
+        this.raycaster.setFromCamera(
+            new THREE.Vector2(mouseX, mouseY),
+            GlobalApp.instance.orthoCam
+        );
         const intersects = this.raycaster.intersectObjects(
             GlobalApp.instance.scene.children.filter(c => c.visible)
         );

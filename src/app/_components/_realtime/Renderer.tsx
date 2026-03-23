@@ -9,6 +9,7 @@ import RealtimeInteractor from "_realtime/engine/interaction/interactor";
 import useKeyboard from "_lib/hooks/useKeyboard";
 import GlobalApp from "_realtime/engine/systems/GlobalApp";
 import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
+import GeomContainerEntity from "_realtime/geom/GeomContainerEntity";
 
 export type RealtimeHoverTarget = {
     type: "node" | "port" | "connection";
@@ -27,7 +28,8 @@ const Renderer = (): JSX.Element => {
     const cameraControls = useCameraControls({
         useDebugControls: false,
         panSensitivity: 0.0015,
-        isOrtho: true,
+        isOrtho: false, // Using perspective for GEOM
+        cameraZ: 10, // Position camera further back for perspective view
     });
 
     // Set up the wheel event - this needs to be done in this strange way due to not being able to
@@ -54,7 +56,7 @@ const Renderer = (): JSX.Element => {
         console.log("INITIALIZING GLOBAL APP");
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color("rgb(127, 127, 127)");
+        scene.background = new THREE.Color("rgb(20, 20, 25)");
         const cameraSize = {
             x: 0.001 * screenDimensions.width,
             y: 0.001 * screenDimensions.height,
@@ -68,10 +70,10 @@ const Renderer = (): JSX.Element => {
             200
         );
         const perspCam = new THREE.PerspectiveCamera(
-            90,
+            75,
             screenDimensions.width / screenDimensions.height,
             0.1,
-            200
+            1000
         );
         // camera.position.z = 100;
         // const camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.1, 10000 );
@@ -112,12 +114,61 @@ const Renderer = (): JSX.Element => {
         }
     }, [interactor, cameraControls]);
 
-    // Create all the nodes and connections for the graph
-    // This should be done in a different way tbh
+    // Create GEOM entity when GlobalApp is ready
     useEffect(() => {
         if (!hasGlobalAppInstance) return;
 
-        console.log("Global App instance is initialised and ready for rendering")
+        console.log("Global App instance is initialised - creating GeomEntity");
+
+        // Use perspective camera for GEOM
+        GlobalApp.instance.renderOrthographic = false;
+
+        // Position camera to view the geometry
+        GlobalApp.instance.perspCam.position.set(0, 0, 10);
+        GlobalApp.instance.perspCam.lookAt(0, 0, 0);
+
+        // Create and initialize GeomEntity
+        const geomEntity = new GeomContainerEntity({
+            sliceCount: 1000,
+            cubeCount: 12,
+            radius: 2.0,
+            spread: 1.0,
+            cubeFill: 0.3,
+            cubeHeight: 1.0,
+            radiusCrunch: 1.0,
+            hue: 0.0,
+            saturation: 0.4,
+            brightness: 1.0,
+            cubeRotateAmount: new THREE.Vector3(0, 0, 1),
+            endCrunchSlices: 3,
+            // Animate hue over time
+            huePerSecond: 0.1,
+            // Spiral effect
+            rotationPerSecond: new THREE.Vector3(5, 10, 10),
+            translationPerSecond: new THREE.Vector3(0, 0, -5),
+            metallic: 0.2,
+            smoothness: 0.6,
+            opacity: 1.0,
+            // Pass dimensions from parent
+            initialWidth: screenDimensions.width,
+            initialHeight: screenDimensions.height,
+        });
+
+        // Position the GeomEntity
+        geomEntity.object3D.position.set(0, 0, 0);
+
+        // Async init
+        geomEntity
+            .init()
+            .then(() => {
+                console.log("GeomEntity initialized successfully");
+            })
+            .catch(err => {
+                console.error("Failed to initialize GeomEntity:", err);
+            });
+        // Note: we only want to create GeomEntity once, so we only depend on hasGlobalAppInstance
+        // The dimensions are captured at creation time
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasGlobalAppInstance]);
 
     useKeyboard(
@@ -134,7 +185,7 @@ const Renderer = (): JSX.Element => {
             if (!hasGlobalAppInstance) return;
 
             Object.values(GlobalApp.instance.entities).forEach((entity: RealtimeEntity) => {
-                entity.update(delta);
+                entity.update(time, delta);
             });
 
             // Render scene

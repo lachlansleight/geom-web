@@ -2,6 +2,7 @@
     "compilerOptions": {
         "target": "es5",
         "lib": ["dom", "dom.iterable", "esnext", "ES2023.Array"],
+        "types": ["@webgpu/types"],
         "allowJs": true,
         "skipLibCheck": true,
         "strict": true,

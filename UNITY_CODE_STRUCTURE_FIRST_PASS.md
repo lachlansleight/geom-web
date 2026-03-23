@@ -5,6 +5,7 @@ This document provides an overview of the Unity compute shader rendering system 
 ## High-Level Concept
 
 The system creates animated geometric tunnels/trails by:
+
 1. Maintaining a **circular buffer of "slices"** - each slice describes a ring of cubes at a point in time/space
 2. Each frame, **one slice is "emitted"** with current parameters (position, rotation, color, etc.)
 3. All other slices are **animated over time** (transformed, color-shifted, shrunk, etc.)
@@ -89,17 +90,18 @@ struct GeomVertex {
 
 The system uses two main GPU buffers:
 
-| Buffer | Size | Purpose |
-|--------|------|---------|
-| `_SliceBuffer` | `SliceCount * sizeof(CubeTunnelSlice)` | Circular buffer of slice parameters |
-| `_VertexBuffer` | `SliceCount * 64 * 24 * sizeof(GeomVertex)` | Final triangle vertices |
+| Buffer          | Size                                        | Purpose                             |
+| --------------- | ------------------------------------------- | ----------------------------------- |
+| `_SliceBuffer`  | `SliceCount * sizeof(CubeTunnelSlice)`      | Circular buffer of slice parameters |
+| `_VertexBuffer` | `SliceCount * 64 * 24 * sizeof(GeomVertex)` | Final triangle vertices             |
 
 **Vertex count calculation:**
-- Up to **64 cubes per slice**
-- Each cube has **4 faces** (no caps - they connect to adjacent slices)
-- Each face has **6 vertices** (2 triangles)
-- Total: `64 * 4 * 6 = 1,536 vertices per slice`
-- With 200 slices: **307,200 vertices** (over 100k triangles)
+
+-   Up to **64 cubes per slice**
+-   Each cube has **4 faces** (no caps - they connect to adjacent slices)
+-   Each face has **6 vertices** (2 triangles)
+-   Total: `64 * 4 * 6 = 1,536 vertices per slice`
+-   With 200 slices: **307,200 vertices** (over 100k triangles)
 
 ## Compute Shader Pipeline
 
@@ -109,20 +111,21 @@ Each frame, the system runs multiple compute shader passes:
 
 These shaders modify the `_SliceBuffer`:
 
-| Shader | Purpose | Thread Groups |
-|--------|---------|---------------|
-| `TransformSetNow.compute` | Sets current slice to current transform/parameters | 1 thread |
-| `TransformPerSecond.compute` | Applies per-frame transform delta to all other slices | 256 threads × (SliceCount/256) |
-| `OffsetPerSecond.compute` | Animates slice parameters (radius, color, size, spin) | 256 threads × (SliceCount/256) |
-| `CubeShrinkWithDarkness.compute` | Shrinks cubes based on brightness (fade effect) | 256 threads × (SliceCount/256) |
+| Shader                           | Purpose                                               | Thread Groups                  |
+| -------------------------------- | ----------------------------------------------------- | ------------------------------ |
+| `TransformSetNow.compute`        | Sets current slice to current transform/parameters    | 1 thread                       |
+| `TransformPerSecond.compute`     | Applies per-frame transform delta to all other slices | 256 threads × (SliceCount/256) |
+| `OffsetPerSecond.compute`        | Animates slice parameters (radius, color, size, spin) | 256 threads × (SliceCount/256) |
+| `CubeShrinkWithDarkness.compute` | Shrinks cubes based on brightness (fade effect)       | 256 threads × (SliceCount/256) |
 
 ### Phase 2: Vertex Generation
 
-| Shader | Purpose | Thread Groups |
-|--------|---------|---------------|
+| Shader               | Purpose                                 | Thread Groups           |
+| -------------------- | --------------------------------------- | ----------------------- |
 | `GeomVertex.compute` | Generates triangle geometry from slices | 64 threads × SliceCount |
 
 The vertex shader is the most complex - it:
+
 1. Reads current slice and previous slice
 2. For each cube in the ring, generates 4 quad faces
 3. Applies cube rotation, scaling, ring placement
@@ -156,10 +159,11 @@ void vert(inout appdata v, out Input o) {
 ```
 
 **Key rendering features:**
-- **Opaque mode**: Standard PBR with metallic/smoothness
-- **Transparent mode**: Alpha blending with edge lines
-- **Distance dissolve**: Noise-based dissolve near camera (VR comfort)
-- **Camera proximity shrink**: Cubes shrink when too close to camera
+
+-   **Opaque mode**: Standard PBR with metallic/smoothness
+-   **Transparent mode**: Alpha blending with edge lines
+-   **Distance dissolve**: Noise-based dissolve near camera (VR comfort)
+-   **Camera proximity shrink**: Cubes shrink when too close to camera
 
 ## The "Slice" Paradigm
 
@@ -176,6 +180,7 @@ Time →
 ```
 
 Each frame:
+
 1. `_currentSlice` is set with current parameters (position, rotation, color, etc.)
 2. `_currentSlice` is incremented (wraps at `SliceCount`)
 3. All other slices are transformed by `TransformPerSecond` matrix
@@ -188,29 +193,29 @@ This creates continuous tunnel/trail effects as the object moves through space.
 
 ### Per-Slice Parameters (set at emission)
 
-| Parameter | Description |
-|-----------|-------------|
-| `Radius` | Distance of cube ring from center |
-| `CubeCount` | Number of cubes in the ring (1-64) |
-| `CubeFill` | Width of each cube relative to spacing |
-| `CubeHeight` | Height/depth of each cube |
-| `CubeSpin` | Rotation applied to individual cubes |
-| `Spread` | How much cubes spread around the ring |
-| `RadiusCrunch` | Multiplier to collapse radius (0 = center) |
-| `Hue/Saturation/Brightness` | HSV color |
+| Parameter                   | Description                                |
+| --------------------------- | ------------------------------------------ |
+| `Radius`                    | Distance of cube ring from center          |
+| `CubeCount`                 | Number of cubes in the ring (1-64)         |
+| `CubeFill`                  | Width of each cube relative to spacing     |
+| `CubeHeight`                | Height/depth of each cube                  |
+| `CubeSpin`                  | Rotation applied to individual cubes       |
+| `Spread`                    | How much cubes spread around the ring      |
+| `RadiusCrunch`              | Multiplier to collapse radius (0 = center) |
+| `Hue/Saturation/Brightness` | HSV color                                  |
 
 ### Animation Parameters (applied per-second)
 
-- `TranslationPerSecond`, `RotationPerSecond`, `ScalingPerSecond` - Transform animation
-- `RadiusPerSecond`, `SpreadPerSecond`, etc. - Parameter animation
-- `ShrinkByDarkness` - Cubes shrink based on brightness (creates fade-out effect)
+-   `TranslationPerSecond`, `RotationPerSecond`, `ScalingPerSecond` - Transform animation
+-   `RadiusPerSecond`, `SpreadPerSecond`, etc. - Parameter animation
+-   `ShrinkByDarkness` - Cubes shrink based on brightness (creates fade-out effect)
 
 ### Rendering Parameters
 
-- `Metallic`, `Smoothness` - PBR properties
-- `Opacity`, `LineOpacity`, `LineThickness` - Transparency mode
-- `DissolveDistanceMin/Max`, `NoiseScale/Strength` - Camera dissolve
-- `EndCrunchSlices` - Number of slices to "crunch" at tunnel ends
+-   `Metallic`, `Smoothness` - PBR properties
+-   `Opacity`, `LineOpacity`, `LineThickness` - Transparency mode
+-   `DissolveDistanceMin/Max`, `NoiseScale/Strength` - Camera dissolve
+-   `EndCrunchSlices` - Number of slices to "crunch" at tunnel ends
 
 ## Utility Functions (GeomIncludes.hlsl)
 
@@ -229,40 +234,45 @@ float Random(uint seed);
 
 ## Version Differences
 
-### _GEOM (Original)
-- Basic implementation
-- Simpler parameter set
-- Working but less configurable
+### \_GEOM (Original)
 
-### _GEOM2025 (Latest)
-- `GeomObject2.cs` - Updated main component
-- Camera dissolve distance for VR comfort
-- Palette support for color modes
-- `IGeomControllable` interface for external control
-- `GeomWrapper` abstraction layer
-- `ThrongController` for managing multiple objects
-- Various "provider" scripts for parameter automation
+-   Basic implementation
+-   Simpler parameter set
+-   Working but less configurable
+
+### \_GEOM2025 (Latest)
+
+-   `GeomObject2.cs` - Updated main component
+-   Camera dissolve distance for VR comfort
+-   Palette support for color modes
+-   `IGeomControllable` interface for external control
+-   `GeomWrapper` abstraction layer
+-   `ThrongController` for managing multiple objects
+-   Various "provider" scripts for parameter automation
 
 ## WebGPU Porting Considerations
 
 ### Direct Port Requirements
 
 1. **Compute Shaders → WebGPU Compute**
-   - HLSL → WGSL translation
-   - Same buffer binding patterns
-   - Thread group sizes should work (256, 64)
+
+    - HLSL → WGSL translation
+    - Same buffer binding patterns
+    - Thread group sizes should work (256, 64)
 
 2. **Structured Buffers**
-   - `RWStructuredBuffer` → WebGPU storage buffers
-   - Same struct layouts (watch for alignment)
+
+    - `RWStructuredBuffer` → WebGPU storage buffers
+    - Same struct layouts (watch for alignment)
 
 3. **Procedural Drawing**
-   - `DrawProcedural` → `draw()` with vertex pulling
-   - Vertex shader reads from storage buffer via `vertex_index`
+
+    - `DrawProcedural` → `draw()` with vertex pulling
+    - Vertex shader reads from storage buffer via `vertex_index`
 
 4. **Surface Shader → Fragment Shader**
-   - Unity's surface shader abstraction must be manually converted
-   - PBR lighting needs manual implementation or library
+    - Unity's surface shader abstraction must be manually converted
+    - PBR lighting needs manual implementation or library
 
 ### Potential Simplifications
 
@@ -279,12 +289,12 @@ float Random(uint seed);
 
 ## Files Critical for WebGPU Port
 
-| Priority | File | Reason |
-|----------|------|--------|
-| 1 | `GeomIncludes.hlsl` | Core structs and functions |
-| 2 | `GeomVertex.compute` | Main geometry generation logic |
-| 3 | `TransformSetNow.compute` | Slice emission |
-| 4 | `TransformPerSecond.compute` | Slice animation |
-| 5 | `OffsetPerSecond.compute` | Parameter animation |
-| 6 | `GeomNew.shader` | Rendering (vertex pulling, PBR) |
-| 7 | `GeomObject2.cs` | Orchestration logic (buffer setup, dispatch) |
+| Priority | File                         | Reason                                       |
+| -------- | ---------------------------- | -------------------------------------------- |
+| 1        | `GeomIncludes.hlsl`          | Core structs and functions                   |
+| 2        | `GeomVertex.compute`         | Main geometry generation logic               |
+| 3        | `TransformSetNow.compute`    | Slice emission                               |
+| 4        | `TransformPerSecond.compute` | Slice animation                              |
+| 5        | `OffsetPerSecond.compute`    | Parameter animation                          |
+| 6        | `GeomNew.shader`             | Rendering (vertex pulling, PBR)              |
+| 7        | `GeomObject2.cs`             | Orchestration logic (buffer setup, dispatch) |

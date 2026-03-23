@@ -18,13 +18,9 @@ class ExampleEntity extends RealtimeEntity implements Hoverable {
 
         this.object3D.name = "Example Object";
         GlobalApp.instance.scene.add(this.object3D);
-        this.object3D.position.set(
-            0, 0, 0
-        );
+        this.object3D.position.set(0, 0, 0);
 
-        const geo = new THREE.BoxGeometry(
-            1, 1, 1
-        );
+        const geo = new THREE.BoxGeometry(1, 1, 1);
         const body = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x6a4b2c }));
         body.userData.entity = this;
         body.name = "CubeGeometry";
@@ -32,7 +28,7 @@ class ExampleEntity extends RealtimeEntity implements Hoverable {
     }
 
     hover() {
-        console.log("Example entity hover on")
+        console.log("Example entity hover on");
     }
 
     unhover() {

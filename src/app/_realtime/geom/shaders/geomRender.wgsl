@@ -8,14 +8,11 @@ struct GeomVertex {
     padding: f32,
 }
 
+// RenderUniforms - 96 bytes, properly aligned
 struct RenderUniforms {
-    viewProjection: mat4x4<f32>,
-    cameraPosition: vec3<f32>,
-    time: f32,
-    metallic: f32,
-    smoothness: f32,
-    opacity: f32,
-    padding: f32,
+    viewProjection: mat4x4<f32>,   // offset 0, 64 bytes
+    cameraAndTime: vec4<f32>,      // offset 64: xyz=cameraPosition, w=time
+    materialParams: vec4<f32>,      // offset 80: x=metallic, y=smoothness, z=opacity, w=unused
 }
 
 struct VertexOutput {
@@ -47,16 +44,22 @@ fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 fn fragmentMain(input: VertexOutput) -> @location(0) vec4<f32> {
     // Simple lighting calculation
     let lightDir = normalize(vec3<f32>(0.5, 1.0, 0.3));
-    let viewDir = normalize(uniforms.cameraPosition - input.worldPos);
+    let cameraPos = uniforms.cameraAndTime.xyz;
+    let viewDir = normalize(cameraPos - input.worldPos);
     let halfDir = normalize(lightDir + viewDir);
+
+    // Material params
+    let metallic = uniforms.materialParams.x;
+    let smoothness = uniforms.materialParams.y;
+    let opacity = uniforms.materialParams.z;
 
     // Lambertian diffuse
     let NdotL = max(dot(input.normal, lightDir), 0.0);
 
     // Blinn-Phong specular
     let NdotH = max(dot(input.normal, halfDir), 0.0);
-    let shininess = mix(4.0, 128.0, uniforms.smoothness);
-    let specular = pow(NdotH, shininess) * uniforms.smoothness;
+    let shininess = mix(4.0, 128.0, smoothness);
+    let specular = pow(NdotH, shininess) * smoothness;
 
     // Ambient
     let ambient = 0.15;
@@ -67,10 +70,10 @@ fn fragmentMain(input: VertexOutput) -> @location(0) vec4<f32> {
 
     // Apply metallic - metallic surfaces tint specular with base color
     var finalColor = input.color * lighting;
-    if (uniforms.metallic > 0.0) {
-        let metallicSpecular = specular * input.color * uniforms.metallic;
+    if (metallic > 0.0) {
+        let metallicSpecular = specular * input.color * metallic;
         finalColor = finalColor + metallicSpecular;
     }
 
-    return vec4<f32>(finalColor, uniforms.opacity);
+    return vec4<f32>(finalColor, opacity);
 }

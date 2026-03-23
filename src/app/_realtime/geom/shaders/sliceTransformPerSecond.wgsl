@@ -1,17 +1,12 @@
 // Transform slices per second compute shader
 
+// CubeTunnelSlice struct - 128 bytes, properly aligned
 struct CubeTunnelSlice {
-    transform: mat4x4<f32>,
-    ringRadius: f32,
-    ringColor: vec3<f32>,
-    cubeSize: vec3<f32>,
-    cubeSpin: vec3<f32>,
-    ringSpread: f32,
-    radiusCrunch: f32,
-    cubeCount: f32,
-    exists: f32,
-    setTime: f32,
-    padding: f32,
+    transform: mat4x4<f32>,        // offset 0, 64 bytes
+    ringRadiusAndColor: vec4<f32>, // offset 64: xyz=color(HSV), w=radius
+    cubeSize: vec4<f32>,           // offset 80: xyz=size, w=spread
+    cubeSpin: vec4<f32>,           // offset 96: xyz=spin, w=radiusCrunch
+    params: vec4<f32>,             // offset 112: x=cubeCount, y=exists, z=setTime, w=unused
 }
 
 struct TransformPerSecondUniforms {

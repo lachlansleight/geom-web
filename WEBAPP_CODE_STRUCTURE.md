@@ -8,22 +8,22 @@ This is a project template that sets up a fullscreen Three.js rendering context 
 
 ## Technology Stack
 
-- **Next.js 14** - React framework with App Router
-- **Three.js 0.166** - 3D graphics library
-- **Tailwind CSS 3.4** - Utility-first CSS framework
-- **TypeScript 5.2** - Type safety
-- **troika-three-text** - Text rendering in Three.js
-- **socket.io-client** - Real-time communication (available but not actively used)
+-   **Next.js 14** - React framework with App Router
+-   **Three.js 0.166** - 3D graphics library
+-   **Tailwind CSS 3.4** - Utility-first CSS framework
+-   **TypeScript 5.2** - Type safety
+-   **troika-three-text** - Text rendering in Three.js
+-   **socket.io-client** - Real-time communication (available but not actively used)
 
 ## Root Configuration Files
 
-| File | Purpose |
-|------|---------|
-| `package.json` | Dependencies and scripts. Dev server runs on port 3030. |
-| `tsconfig.json` | TypeScript config with `baseUrl: ./src/app` allowing clean imports like `"_lib/hooks/useAnimationFrame"` |
-| `tailwind.config.js` | Tailwind setup with custom font families (Abyssinica, Aleo, JetBrains Mono) |
-| `postcss.config.js` | PostCSS with Tailwind and Autoprefixer |
-| `.eslintrc.json` | Extends `next/core-web-vitals` |
+| File                 | Purpose                                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------------------- |
+| `package.json`       | Dependencies and scripts. Dev server runs on port 3030.                                                  |
+| `tsconfig.json`      | TypeScript config with `baseUrl: ./src/app` allowing clean imports like `"_lib/hooks/useAnimationFrame"` |
+| `tailwind.config.js` | Tailwind setup with custom font families (Abyssinica, Aleo, JetBrains Mono)                              |
+| `postcss.config.js`  | PostCSS with Tailwind and Autoprefixer                                                                   |
+| `.eslintrc.json`     | Extends `next/core-web-vitals`                                                                           |
 
 ## Directory Structure
 
@@ -69,13 +69,15 @@ src/
 ### 1. Entry Point: `layout.tsx`
 
 Sets up the HTML structure with:
-- Google Fonts (Abyssinica SIL, Aleo, JetBrains Mono) as CSS variables
-- Base styling with neutral background and white text
-- Font variables applied to body for Tailwind's font utilities
+
+-   Google Fonts (Abyssinica SIL, Aleo, JetBrains Mono) as CSS variables
+-   Base styling with neutral background and white text
+-   Font variables applied to body for Tailwind's font utilities
 
 ### 2. Main Page: `page.tsx`
 
 A client component that:
+
 1. Reads URL search parameters (placeholder for async setup)
 2. Shows a loading state until ready
 3. Renders `<Header />` and `<Renderer />`
@@ -91,21 +93,22 @@ The heart of the Three.js integration. On mount, it:
 5. **Starts render loop** - Uses `useAnimationFrame` to update entities and render each frame
 
 Key hooks used:
-- `useDimensions()` - Tracks window size for responsive canvas
-- `useCameraControls()` - Pan/zoom with smooth lerping
-- `useKeyboard()` - Global keyboard event handling
-- `useAnimationFrame()` - 60fps render loop
+
+-   `useDimensions()` - Tracks window size for responsive canvas
+-   `useCameraControls()` - Pan/zoom with smooth lerping
+-   `useKeyboard()` - Global keyboard event handling
+-   `useAnimationFrame()` - 60fps render loop
 
 ### 4. GlobalApp Singleton: `systems/GlobalApp.ts`
 
 A singleton class providing global access to Three.js objects:
 
 ```typescript
-GlobalApp.instance.renderer  // THREE.WebGLRenderer
-GlobalApp.instance.orthoCam  // THREE.OrthographicCamera
-GlobalApp.instance.perspCam  // THREE.PerspectiveCamera
-GlobalApp.instance.scene     // THREE.Scene
-GlobalApp.instance.entities  // Record<string, RealtimeEntity>
+GlobalApp.instance.renderer; // THREE.WebGLRenderer
+GlobalApp.instance.orthoCam; // THREE.OrthographicCamera
+GlobalApp.instance.perspCam; // THREE.PerspectiveCamera
+GlobalApp.instance.scene; // THREE.Scene
+GlobalApp.instance.entities; // Record<string, RealtimeEntity>
 ```
 
 This pattern allows any code in the application to access the Three.js context without prop drilling.
@@ -116,12 +119,12 @@ Base class for all 3D objects in the scene:
 
 ```typescript
 class RealtimeEntity {
-    objectId: string;           // Unique UUID
-    object3D: THREE.Object3D;   // The Three.js object
+    objectId: string; // Unique UUID
+    object3D: THREE.Object3D; // The Three.js object
 
-    init(data?: any) {}         // Called to register with GlobalApp
-    update(deltaTime: number) {} // Called every frame
-    destroy() {}                // Cleanup
+    init(data?: any) {} // Called to register with GlobalApp
+    update(time: number, deltaTime: number) {} // Called every frame
+    destroy() {} // Cleanup
 }
 ```
 
@@ -132,6 +135,7 @@ Entities register themselves in `GlobalApp.instance.entities` and are automatica
 TypeScript interfaces for entity capabilities:
 
 **Hoverable** (`hoverable.ts`):
+
 ```typescript
 interface Hoverable {
     isHoverable: true;
@@ -142,6 +146,7 @@ interface Hoverable {
 ```
 
 **Clickable** (`clickable.ts`):
+
 ```typescript
 interface Clickable {
     isClickable: true;
@@ -159,19 +164,22 @@ Entities implement these interfaces to receive interaction events. Type guards (
 ### 7. Interaction System: `interaction/`
 
 **RealtimeInteractor** (`interactor.ts`):
-- Manages a `THREE.Raycaster` for mouse picking
-- Maintains a `hoverStack` of entities under the cursor
-- Delegates events to handler functions
+
+-   Manages a `THREE.Raycaster` for mouse picking
+-   Maintains a `hoverStack` of entities under the cursor
+-   Delegates events to handler functions
 
 **mouseHandling.ts**:
-- `handleMouseMove` - Updates raycast, manages hover state
-- `handleMouseDown/Up` - Dispatches click events to Clickable entities
-- `handleWheelEvent` - Zoom (ctrl+scroll or mouse wheel) or pan (trackpad scroll)
+
+-   `handleMouseMove` - Updates raycast, manages hover state
+-   `handleMouseDown/Up` - Dispatches click events to Clickable entities
+-   `handleWheelEvent` - Zoom (ctrl+scroll or mouse wheel) or pan (trackpad scroll)
 
 **keyHandling.ts**:
-- Debug controls: Arrow keys rotate camera, 0 resets
-- Tracks shift key state
-- Logs keypresses for debugging
+
+-   Debug controls: Arrow keys rotate camera, 0 resets
+-   Tracks shift key state
+-   Logs keypresses for debugging
 
 ### 8. Camera Controls: `cameraControls.ts`
 
@@ -190,32 +198,33 @@ cameraControls.offsetZoom(delta, targetX, targetY);
 ```
 
 Features:
-- Optional lerping for smooth movement
-- Zoom-toward-cursor behavior
-- Syncs orthographic and perspective cameras
+
+-   Optional lerping for smooth movement
+-   Zoom-toward-cursor behavior
+-   Syncs orthographic and perspective cameras
 
 ## Custom Hooks
 
-| Hook | Purpose |
-|------|---------|
-| `useAnimationFrame` | Runs callback on every `requestAnimationFrame`, provides `time` and `delta` |
-| `useDimensions` | Returns `{ width, height }` of window, updates on resize |
-| `useElementDimensions` | Returns position and size of a ref'd element using ResizeObserver |
-| `useKeyboard` | Attaches keydown/keyup listeners, calls callback for each event |
-| `useInterval` | Runs callback at specified interval, properly handles cleanup |
-| `useSocket` | Creates and manages a socket.io connection |
+| Hook                   | Purpose                                                                     |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `useAnimationFrame`    | Runs callback on every `requestAnimationFrame`, provides `time` and `delta` |
+| `useDimensions`        | Returns `{ width, height }` of window, updates on resize                    |
+| `useElementDimensions` | Returns position and size of a ref'd element using ResizeObserver           |
+| `useKeyboard`          | Attaches keydown/keyup listeners, calls callback for each event             |
+| `useInterval`          | Runs callback at specified interval, properly handles cleanup               |
+| `useSocket`            | Creates and manages a socket.io connection                                  |
 
 ## UI Components
 
 Located in `_components/controls/`:
 
-- **Button** - Basic styled button
-- **Checkbox / CheckboxField** - Checkbox input with label
-- **Toggle / ToggleField** - Toggle switch
-- **Slider / SliderField** - Draggable slider with optional interval callbacks
-- **TextField / TextAreaField / TextIntField** - Text inputs
-- **SelectField** - Dropdown select
-- **Foldout** - Collapsible section
+-   **Button** - Basic styled button
+-   **Checkbox / CheckboxField** - Checkbox input with label
+-   **Toggle / ToggleField** - Toggle switch
+-   **Slider / SliderField** - Draggable slider with optional interval callbacks
+-   **TextField / TextAreaField / TextIntField** - Text inputs
+-   **SelectField** - Dropdown select
+-   **Foldout** - Collapsible section
 
 ## How to Add a New Entity
 
@@ -234,13 +243,13 @@ class MyEntity extends RealtimeEntity {
             new THREE.BoxGeometry(1, 1, 1),
             new THREE.MeshBasicMaterial({ color: 0xff0000 })
         );
-        mesh.userData.entity = this;  // Required for raycasting!
+        mesh.userData.entity = this; // Required for raycasting!
         this.object3D.add(mesh);
 
         GlobalApp.instance.scene.add(this.object3D);
     }
 
-    update(deltaTime: number) {
+    update(time: number, deltaTime: number) {
         this.object3D.rotation.y += deltaTime;
     }
 }
@@ -267,10 +276,16 @@ class InteractiveEntity extends RealtimeEntity implements Hoverable, Clickable {
     isHovered = false;
     isClickable: true = true;
 
-    hover() { /* highlight effect */ }
-    unhover() { /* remove highlight */ }
+    hover() {
+        /* highlight effect */
+    }
+    unhover() {
+        /* remove highlight */
+    }
 
-    leftClickDown() { /* handle click */ }
+    leftClickDown() {
+        /* handle click */
+    }
     leftClickUp() {}
     middleClickDown() {}
     middleClickUp() {}
@@ -284,15 +299,16 @@ class InteractiveEntity extends RealtimeEntity implements Hoverable, Clickable {
 ## Render Loop Summary
 
 Each frame:
+
 1. `useAnimationFrame` triggers with `{ time, delta }`
-2. All entities in `GlobalApp.instance.entities` have `.update(delta)` called
+2. All entities in `GlobalApp.instance.entities` have `.update(time, delta)` called
 3. Camera controls apply any pending position/zoom changes
 4. Scene is rendered with the active camera (ortho or perspective)
 
 ## Notes
 
-- The template defaults to orthographic projection but supports switching to perspective
-- Debug camera rotation is available via arrow keys (switches to perspective mode)
-- Press `0` to reset camera rotation and return to orthographic mode
-- There's a commented-out three-inspect integration for debugging 3D scenes
-- The API example route at `/api/example` echoes back POST body as JSON
+-   The template defaults to orthographic projection but supports switching to perspective
+-   Debug camera rotation is available via arrow keys (switches to perspective mode)
+-   Press `0` to reset camera rotation and return to orthographic mode
+-   There's a commented-out three-inspect integration for debugging 3D scenes
+-   The API example route at `/api/example` echoes back POST body as JSON
