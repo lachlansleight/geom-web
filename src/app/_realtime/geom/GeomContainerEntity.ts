@@ -1,8 +1,7 @@
 import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import * as THREE from "three";
 import GeomEntity from "./GeomEntity";
-import { Perlin } from "ts-noise";
-import { Vector2 } from "_lib/types/Vector2";
+import GeomParameterAnimator from "./animation/GeomParameterAnimator";
 
 export interface GeomConfig {
     sliceCount: number;
@@ -40,8 +39,8 @@ export interface GeomConfig {
 }
 
 const DEFAULT_CONFIG: GeomConfig = {
-    sliceCount: 200,
-    cubeCount: 32,
+    sliceCount: 1000,
+    cubeCount: 64,
     radius: 2.0,
     spread: 1.0,
     cubeFill: 0.5,
@@ -71,34 +70,35 @@ const DEFAULT_CONFIG: GeomConfig = {
 
 export default class GeomContainerEntity extends RealtimeEntity {
     config: GeomConfig;
-    perlin: Perlin;
     geomEntity: GeomEntity;
+    animator: GeomParameterAnimator;
 
     constructor(config: Partial<GeomConfig> = {}) {
         super();
-        this.perlin = new Perlin(Date.now() * 0.001);
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.geomEntity = new GeomEntity(this.config);
+        this.animator = new GeomParameterAnimator();
+
+        // Parent the animator under our Object3D for scene hierarchy
+        this.object3D.add(this.animator.object3D);
     }
 
     async init(): Promise<void> {
         super.init();
-
+        this.animator.init();
         this.geomEntity.init();
     }
 
     update(time: number, deltaTime: number): void {
-        let noiseA = this.perlin.get2(new Vector2(time * 0.2, 0));
-        let noiseB = this.perlin.get2(new Vector2(time * 0.5, 0.8));
-        let noiseC = this.perlin.get2(new Vector2(time * 0.5, 0.2));
-        let noiseD = this.perlin.get2(new Vector2(time * 0.5, 12.435));
-        this.config.radius = noiseA * 3 + 3.5;
-        this.config.cubeFill = noiseB * 0.6 + 0.3;
-        // this.config.radius = (0.5 * Math.sin(time * 2.5) + 0.5) * 1.0 + 2.5;
-        this.geomEntity.object3D.position.x = (noiseC - 0) * 16.0;
-        this.geomEntity.object3D.position.y = (noiseD - 0) * 9.0;
-        this.geomEntity.object3D.rotation.z = time * 0.7;
+        // The animator is registered in GlobalApp and gets its own update() call.
+        // We just read the values it computed this frame (one-frame latency is fine
+        // for slow-moving animation parameters).
+        this.animator.applyToConfig(this.config, this.geomEntity.object3D);
 
+        // this.geomEntity.object3D.position.copy(new THREE.Vector3(0, 0, -30));
+        this.geomEntity.object3D.position.z = -100;
+
+        // Pass updated config to the GPU renderer
         this.geomEntity.config = this.config;
     }
 }

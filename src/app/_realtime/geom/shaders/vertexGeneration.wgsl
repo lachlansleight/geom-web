@@ -254,10 +254,10 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>, @builtin(workgroup_i
         cube[i * 4u + 3u] = DEFAULT_CUBE[i * 4u + 3u] * vec3<f32>(cubeScaleY, cubeScaleX, 0.0);
 
         // Spin cubes
-        cube[i * 4u + 0u] = eulerRotateReverse(cube[i * 4u + 0u], lastSpin + lastCubeRotate);
-        cube[i * 4u + 1u] = eulerRotateReverse(cube[i * 4u + 1u], lastSpin + lastCubeRotate);
-        cube[i * 4u + 2u] = eulerRotateReverse(cube[i * 4u + 2u], thisSpin + cubeRotate);
-        cube[i * 4u + 3u] = eulerRotateReverse(cube[i * 4u + 3u], thisSpin + cubeRotate);
+        cube[i * 4u + 0u] = eulerRotateReverse(cube[i * 4u + 0u], -1 * (lastSpin + lastCubeRotate));
+        cube[i * 4u + 1u] = eulerRotateReverse(cube[i * 4u + 1u], -1 * (lastSpin + lastCubeRotate));
+        cube[i * 4u + 2u] = eulerRotateReverse(cube[i * 4u + 2u], -1 * (thisSpin + cubeRotate));
+        cube[i * 4u + 3u] = eulerRotateReverse(cube[i * 4u + 3u], -1 * (thisSpin + cubeRotate));
 
         // Place in ring
         cube[i * 4u + 0u] = cube[i * 4u + 0u] + offsetA;

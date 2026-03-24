@@ -129,26 +129,8 @@ const Renderer = (): JSX.Element => {
 
         // Create and initialize GeomEntity
         const geomEntity = new GeomContainerEntity({
-            sliceCount: 1000,
-            cubeCount: 12,
-            radius: 2.0,
-            spread: 1.0,
-            cubeFill: 0.3,
-            cubeHeight: 1.0,
-            radiusCrunch: 1.0,
-            hue: 0.0,
             saturation: 0.4,
-            brightness: 1.0,
-            cubeRotateAmount: new THREE.Vector3(0, 0, 1),
-            endCrunchSlices: 3,
-            // Animate hue over time
-            huePerSecond: 0.1,
-            // Spiral effect
-            rotationPerSecond: new THREE.Vector3(5, 10, 10),
-            translationPerSecond: new THREE.Vector3(0, 0, -5),
-            metallic: 0.2,
-            smoothness: 0.6,
-            opacity: 1.0,
+            translationPerSecond: new THREE.Vector3(0, 0, 10),
             // Pass dimensions from parent
             initialWidth: screenDimensions.width,
             initialHeight: screenDimensions.height,

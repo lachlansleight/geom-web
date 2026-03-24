@@ -7,7 +7,7 @@ This document describes the WebGPU port of the Unity GEOM system, which renders 
 The GEOM system creates animated geometric patterns by:
 
 1. Maintaining a **circular buffer of "slices"** on the GPU - each slice describes a ring of cubes
-2. Each frame, the **current slice is set** with the object's transform and parameters
+2. Every N frames (configurable via `sliceInterval`), the **current slice is set** with the object's transform and parameters
 3. All other slices are **animated** (transformed, color-shifted, etc.) via compute shaders
 4. Slices are **expanded into triangle geometry** by the vertex generation compute shader
 5. The geometry is **rendered** using vertex pulling from a storage buffer
@@ -18,7 +18,8 @@ This creates a "temporal geometry" effect where the object leaves a trail of its
 
 ```
 src/app/_realtime/geom/
-├── GeomEntity.ts           # Main orchestrator class
+├── GeomContainerEntity.ts  # High-level controller with noise-based animation
+├── GeomEntity.ts           # Core WebGPU orchestrator class
 └── shaders/
     ├── sliceSetNow.wgsl              # Sets current slice parameters
     ├── sliceTransformPerSecond.wgsl  # Applies transform animation to slices
@@ -29,9 +30,33 @@ src/app/_realtime/geom/
 
 ## Key Components
 
+### GeomContainerEntity.ts
+
+A high-level wrapper that controls `GeomEntity` with Perlin noise-based animation. This is the class instantiated in `Renderer.tsx`.
+
+**Key responsibilities:**
+- Creates and manages a `GeomEntity` instance
+- Animates parameters over time using Perlin noise:
+  - `radius`: varies between ~0.5 and 6.5
+  - `cubeFill`: varies between ~0.3 and 0.9
+  - Position: moves across screen based on noise
+  - Rotation: continuous rotation over time
+- Passes updated config to `GeomEntity` each frame
+
+**Usage:**
+```typescript
+const geomContainer = new GeomContainerEntity({
+    sliceCount: 1000,
+    cubeCount: 12,
+    // ... other config
+});
+await geomContainer.init();
+// update() is called automatically by the render loop
+```
+
 ### GeomEntity.ts
 
-The main class that extends `RealtimeEntity` and orchestrates the entire WebGPU pipeline.
+The core WebGPU class that extends `RealtimeEntity` and orchestrates the rendering pipeline.
 
 **Key responsibilities:**
 - WebGPU device and context initialization
@@ -42,16 +67,21 @@ The main class that extends `RealtimeEntity` and orchestrates the entire WebGPU 
 
 **Important methods:**
 - `init()` - Async initialization of all WebGPU resources
-- `update(deltaTime)` - Called every frame, dispatches compute shaders and renders
+- `update(time, deltaTime)` - Called every frame, dispatches compute shaders and renders
 - `createCanvas()` - Creates overlay canvas for WebGPU rendering (separate from Three.js)
 - `dispatchCompute()` - Runs all compute shader passes in sequence
 - `render()` - Renders the geometry using vertex pulling
 
+**Key state variables:**
+- `sliceInterval: 2` - Slices advance every N frames (default: 2)
+- `holdRadiusAtZero: true` - First slice has radius 0 (prevents pop-in)
+- `currentSlice` wraps at `sliceCount * 0.75` - Uses 75% of buffer capacity
+
 **Configuration (`GeomConfig`):**
 ```typescript
 interface GeomConfig {
-    sliceCount: number;      // Number of slices in circular buffer (e.g., 150)
-    cubeCount: number;       // Cubes per ring (e.g., 24)
+    sliceCount: number;      // Number of slices in circular buffer (e.g., 1000)
+    cubeCount: number;       // Cubes per ring (e.g., 12)
     radius: number;          // Ring radius
     spread: number;          // How spread out cubes are around ring
     cubeFill: number;        // Cube width relative to spacing
@@ -63,6 +93,9 @@ interface GeomConfig {
     translationPerSecond: Vector3;
     rotationPerSecond: Vector3;
     // ... etc
+    metallic: number;        // Material metallic value (0-1)
+    smoothness: number;      // Material smoothness (0-1)
+    opacity: number;         // Material opacity (0-1)
 }
 ```
 
@@ -76,6 +109,8 @@ Each frame runs 4 compute passes in sequence:
 | 2 | `sliceTransformPerSecond` | ceil(sliceCount/256) | Apply transform delta to all other slices |
 | 3 | `sliceOffsetPerSecond` | ceil(sliceCount/256) | Animate slice parameters (color, size, spin) |
 | 4 | `vertexGeneration` | sliceCount | Generate triangle geometry from slices |
+
+**Slice advancement:** Controlled by `sliceInterval` (default: 2). The current slice only advances every N frames, meaning slices are written at half frame rate by default. The `currentSlice` counter wraps at 75% of `sliceCount` to avoid visual artifacts from buffer wraparound.
 
 ### GPU Buffer Layout
 
@@ -165,11 +200,12 @@ Requires `GPUBufferUsage.COPY_SRC` on source buffers.
 
 ## Integration with Three.js
 
-The `GeomEntity` extends `RealtimeEntity` but doesn't add anything to the Three.js scene. Instead:
+Both `GeomContainerEntity` and `GeomEntity` extend `RealtimeEntity` but don't add anything to the Three.js scene. Instead:
 
-1. It creates its own WebGPU canvas overlay
+1. `GeomEntity` creates its own WebGPU canvas overlay
 2. It reads camera matrices from `GlobalApp.instance.perspCam`
-3. The `update()` method is called by the main render loop like any other entity
+3. The `update(time, deltaTime)` method is called by the main render loop like any other entity
+4. `GeomContainerEntity.update()` applies noise-based animation but doesn't call `GeomEntity.update()` - that's handled directly by the render loop iterating over `GlobalApp.instance.entities`
 
 **Camera matrix usage:**
 ```typescript
@@ -182,20 +218,36 @@ const viewProjMatrix = new THREE.Matrix4().multiplyMatrices(projMatrix, viewMatr
 
 ## Configuration in Renderer.tsx
 
-The GeomEntity is instantiated in `Renderer.tsx`:
+The `GeomContainerEntity` is instantiated in `Renderer.tsx`:
 ```typescript
-const geomEntity = new GeomEntity({
-    sliceCount: 500,
-    cubeCount: 24,
+const geomEntity = new GeomContainerEntity({
+    sliceCount: 1000,
+    cubeCount: 12,
     radius: 2.0,
-    huePerSecond: 0.05,
-    rotationPerSecond: new THREE.Vector3(0, 0, 0),
-    translationPerSecond: new THREE.Vector3(0, 0, -0.5),
+    spread: 1.0,
+    cubeFill: 0.3,
+    cubeHeight: 1.0,
+    radiusCrunch: 1.0,
+    hue: 0.0,
+    saturation: 0.4,
+    brightness: 1.0,
+    cubeRotateAmount: new THREE.Vector3(0, 0, 1),
+    endCrunchSlices: 3,
+    huePerSecond: 0.1,
+    rotationPerSecond: new THREE.Vector3(5, 10, 10),
+    translationPerSecond: new THREE.Vector3(0, 0, -5),
+    metallic: 0.2,
+    smoothness: 0.6,
+    opacity: 1.0,
+    initialWidth: screenDimensions.width,
+    initialHeight: screenDimensions.height,
 });
-geomEntity.init();
+await geomEntity.init();
 ```
 
 The camera is set to perspective mode with `cameraZ: 10` in the camera controls config.
+
+Note: `GeomContainerEntity` will override `radius` and `cubeFill` with noise-based values at runtime.
 
 ## Known Limitations / Future Work
 
@@ -203,7 +255,8 @@ The camera is set to perspective mode with `cameraZ: 10` in the camera controls 
 2. **Fixed cube count** - Currently assumes max 64 cubes per slice (hardcoded in vertex buffer size)
 3. **No VR features** - The Unity version has camera proximity shrink and dissolve effects for VR comfort
 4. **Single material** - No texture support, just HSV colors with basic Blinn-Phong lighting
-5. **Debug mode always on** - Should be configurable
+5. **Buffer wraparound** - Uses 75% of slice buffer to avoid visual artifacts at wrap point
+6. **Culling disabled** - `cullMode: "none"` is set to debug gap issues (may want to re-enable for performance)
 
 ## Troubleshooting
 
