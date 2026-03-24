@@ -129,7 +129,7 @@ const Renderer = (): JSX.Element => {
 
         // Create and initialize GeomEntity
         const geomEntity = new GeomContainerEntity({
-            saturation: 0.4,
+            saturation: 1,
             translationPerSecond: new THREE.Vector3(0, 0, 10),
             // Pass dimensions from parent
             initialWidth: screenDimensions.width,

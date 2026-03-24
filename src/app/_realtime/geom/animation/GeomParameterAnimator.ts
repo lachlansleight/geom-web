@@ -58,10 +58,10 @@ const PARAMETER_DEFAULTS: InterpolatorConfig[] = [
         interpolationPeriodMin: 5,
         interpolationPeriodMax: 22,
         shuffler: {
-            muted: true,
+            muted: false,
             absoluteMin: 0,
-            absoluteMax: 1,
-            maxChangePerSecond: 0.3,
+            absoluteMax: 3,
+            maxChangePerSecond: 0.1,
             minFrequency: 0.01,
             maxFrequency: 0.3,
             freezeChance: 0.15,

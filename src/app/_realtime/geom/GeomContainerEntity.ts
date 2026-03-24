@@ -57,7 +57,7 @@ const DEFAULT_CONFIG: GeomConfig = {
     scalingPerSecond: new THREE.Vector3(1, 1, 1),
     radiusPerSecond: 0,
     spreadPerSecond: 0,
-    huePerSecond: 0.1,
+    huePerSecond: 0,
     saturationPerSecond: 0,
     brightnessPerSecond: 0,
     cubeFillPerSecond: 0,
