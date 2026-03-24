@@ -12,6 +12,7 @@ import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import GeomContainerEntity from "_realtime/geom/GeomContainerEntity";
 import CameraOrbitEntity from "_realtime/camera/CameraOrbitEntity";
 import GeomPatternManager from "_realtime/geom/patterns/GeomPatternManager";
+import SkyGradientEntity from "_realtime/sky/SkyGradientEntity";
 
 export type RealtimeHoverTarget = {
     type: "node" | "port" | "connection";
@@ -146,6 +147,10 @@ const Renderer = (): JSX.Element => {
 
         // Use perspective camera for GEOM
         GlobalApp.instance.renderOrthographic = false;
+
+        // Sky gradient background
+        const sky = new SkyGradientEntity();
+        sky.init();
 
         // Set up camera orbit controller
         const cameraOrbit = new CameraOrbitEntity();
