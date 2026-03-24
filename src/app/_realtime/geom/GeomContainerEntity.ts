@@ -33,6 +33,13 @@ export interface GeomConfig {
     metallic: number;
     smoothness: number;
     opacity: number;
+    // Dissolve (camera proximity)
+    dissolveMin: number;
+    dissolveMax: number;
+    noiseScale: number;
+    noiseStrength: number;
+    /** 0 = uniform dissolve distance, 1 = dissolve distance drops to zero at camera sides */
+    dissolveForwardBias: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -40,7 +47,7 @@ export interface GeomConfig {
 
 const DEFAULT_CONFIG: GeomConfig = {
     sliceCount: 1000,
-    cubeCount: 64,
+    cubeCount: 32,
     radius: 2.0,
     spread: 1.0,
     cubeFill: 0.5,
@@ -66,6 +73,11 @@ const DEFAULT_CONFIG: GeomConfig = {
     metallic: 0.0,
     smoothness: 0.5,
     opacity: 1.0,
+    dissolveMin: 5.0,
+    dissolveMax: 12.0,
+    noiseScale: 12,
+    noiseStrength: 0.5,
+    dissolveForwardBias: 0.9,
 };
 
 export default class GeomContainerEntity extends RealtimeEntity {

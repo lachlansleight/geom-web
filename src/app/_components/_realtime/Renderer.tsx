@@ -56,7 +56,8 @@ const Renderer = (): JSX.Element => {
         console.log("INITIALIZING GLOBAL APP");
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color("rgb(20, 20, 25)");
+        // scene.background = new THREE.Color("rgb(20, 20, 25)");
+        scene.background = new THREE.Color("rgb(10, 10, 13)");
         const cameraSize = {
             x: 0.001 * screenDimensions.width,
             y: 0.001 * screenDimensions.height,

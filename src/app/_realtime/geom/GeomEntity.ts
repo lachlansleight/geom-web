@@ -43,6 +43,12 @@ export interface GeomConfig {
     metallic: number;
     smoothness: number;
     opacity: number;
+    // Dissolve (camera proximity)
+    dissolveMin: number;
+    dissolveMax: number;
+    noiseScale: number;
+    noiseStrength: number;
+    dissolveForwardBias: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -76,6 +82,11 @@ const DEFAULT_CONFIG: GeomConfig = {
     metallic: 0.0,
     smoothness: 0.5,
     opacity: 1.0,
+    dissolveMin: 2.0,
+    dissolveMax: 5.0,
+    noiseScale: 0.8,
+    noiseStrength: 0.5,
+    dissolveForwardBias: 0.7,
 };
 
 export default class GeomEntity extends RealtimeEntity {
@@ -818,19 +829,31 @@ export default class GeomEntity extends RealtimeEntity {
         const viewProjMatrix = new THREE.Matrix4().multiplyMatrices(projMatrix, viewMatrix);
 
         // Update render uniforms
-        // Layout: viewProjection (16 floats) + cameraAndTime (4 floats) + materialParams (4 floats)
-        const renderData = new Float32Array(24);
+        // Layout: viewProjection (16) + cameraAndTime (4) + materialParams (4) + dissolveParams (4) + cameraForward (4) = 32 floats = 128 bytes
+        const renderData = new Float32Array(32);
         viewProjMatrix.toArray(renderData, 0);
         // cameraAndTime: xyz=cameraPosition, w=time
         renderData[16] = camera.position.x;
         renderData[17] = camera.position.y;
         renderData[18] = camera.position.z;
         renderData[19] = this.time;
-        // materialParams: x=metallic, y=smoothness, z=opacity, w=unused
+        // materialParams: x=metallic, y=smoothness, z=opacity, w=dissolveForwardBias
         renderData[20] = this.config.metallic;
         renderData[21] = this.config.smoothness;
         renderData[22] = this.config.opacity;
-        renderData[23] = 0;
+        renderData[23] = this.config.dissolveForwardBias;
+        // dissolveParams: x=dissolveMin, y=dissolveMax, z=noiseScale, w=noiseStrength
+        renderData[24] = this.config.dissolveMin;
+        renderData[25] = this.config.dissolveMax;
+        renderData[26] = this.config.noiseScale;
+        renderData[27] = this.config.noiseStrength;
+        // cameraForward: xyz=forward direction, w=unused
+        const fwd = new THREE.Vector3();
+        camera.getWorldDirection(fwd);
+        renderData[28] = fwd.x;
+        renderData[29] = fwd.y;
+        renderData[30] = fwd.z;
+        renderData[31] = 0;
 
         this.device.queue.writeBuffer(this.renderUniformBuffer, 0, renderData);
 
