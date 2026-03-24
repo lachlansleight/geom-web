@@ -68,6 +68,25 @@ export default class CameraOrbitEntity extends RealtimeEntity {
         super.init();
     }
 
+    /** Update config at runtime (e.g. when switching patterns).
+     *  Oscillators keep running with accumulated time for smooth transition. */
+    applyConfig(config: Partial<CameraOrbitConfig>): void {
+        if (config.orbitCenter) {
+            this.config.orbitCenter.copy(config.orbitCenter);
+        }
+        if (config.lookAtAmount !== undefined) this.config.lookAtAmount = config.lookAtAmount;
+        if (config.playing !== undefined) this.config.playing = config.playing;
+        if (config.radius) {
+            this.oscillatorRadius.params = { ...this.oscillatorRadius.params, ...config.radius };
+        }
+        if (config.theta) {
+            this.oscillatorTheta.params = { ...this.oscillatorTheta.params, ...config.theta };
+        }
+        if (config.phi) {
+            this.oscillatorPhi.params = { ...this.oscillatorPhi.params, ...config.phi };
+        }
+    }
+
     update(_time: number, deltaTime: number): void {
         if (!this.config.playing) return;
 

@@ -120,4 +120,32 @@ export default class ParameterInterpolatorEntity extends RealtimeEntity {
     randomiseInterpolationTime(): void {
         this._interpolationTime = Math.random() * (this.interpolatorConfig.interpolationPeriodMax - this.interpolatorConfig.interpolationPeriodMin) + this.interpolatorConfig.interpolationPeriodMin;
     }
+
+    /** Update shuffler config at runtime (e.g. when switching patterns).
+     *  Reshuffles the inactive oscillator so the new bounds take effect on next transition. */
+    updateConfig(config: InterpolatorConfig): void {
+        this.interpolatorConfig = config;
+        this.shuffler = new OscillatorShuffler(config.shuffler);
+
+        // Reshuffle whichever oscillator is NOT currently being read
+        if (this._directionUp) {
+            // heading toward "to", so "from" side is safe
+            if (this._t > 0.5) {
+                this.shuffler.shuffle(this.oscillatorFrom.params);
+                this.oscillatorFrom.resetTime();
+            } else {
+                this.shuffler.shuffle(this.oscillatorTo.params);
+                this.oscillatorTo.resetTime();
+            }
+        } else {
+            if (this._t < 0.5) {
+                this.shuffler.shuffle(this.oscillatorTo.params);
+                this.oscillatorTo.resetTime();
+            } else {
+                this.shuffler.shuffle(this.oscillatorFrom.params);
+                this.oscillatorFrom.resetTime();
+            }
+        }
+        this.randomiseInterpolationTime();
+    }
 }

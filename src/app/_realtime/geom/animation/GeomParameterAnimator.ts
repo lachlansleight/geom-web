@@ -199,6 +199,20 @@ export default class GeomParameterAnimator extends RealtimeEntity {
         return this.interpolators.get(parameterName)?.value ?? 0;
     }
 
+    /** Update all interpolator configs at runtime (e.g. when switching patterns) */
+    applyAnimatorConfigs(configs: { [name: string]: Partial<InterpolatorConfig> }): void {
+        for (const [name, partialConfig] of Object.entries(configs)) {
+            const interpolator = this.interpolators.get(name);
+            if (!interpolator) continue;
+            const merged: InterpolatorConfig = {
+                ...interpolator.interpolatorConfig,
+                ...partialConfig,
+                shuffler: { ...interpolator.interpolatorConfig.shuffler, ...partialConfig.shuffler },
+            };
+            interpolator.updateConfig(merged);
+        }
+    }
+
     /**
      * Apply all animated parameter values to a GeomConfig and Object3D.
      * Call this from GeomContainerEntity.update() after updating the animator.

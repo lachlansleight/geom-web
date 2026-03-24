@@ -3,7 +3,7 @@
 import * as THREE from "three";
 import useAnimationFrame from "_lib/hooks/useAnimationFrame";
 import useDimensions from "_lib/hooks/useDimensions";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useCameraControls from "_realtime/engine/cameraControls";
 import RealtimeInteractor from "_realtime/engine/interaction/interactor";
 import useKeyboard from "_lib/hooks/useKeyboard";
@@ -11,6 +11,7 @@ import GlobalApp from "_realtime/engine/systems/GlobalApp";
 import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import GeomContainerEntity from "_realtime/geom/GeomContainerEntity";
 import CameraOrbitEntity from "_realtime/camera/CameraOrbitEntity";
+import GeomPatternManager from "_realtime/geom/patterns/GeomPatternManager";
 
 export type RealtimeHoverTarget = {
     type: "node" | "port" | "connection";
@@ -25,6 +26,27 @@ const Renderer = (): JSX.Element => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const interactor = useRef<RealtimeInteractor | null>(null);
     const [cursor, setCursor] = useState("");
+    const patternManager = useRef<GeomPatternManager | null>(null);
+    const [patternOverlay, setPatternOverlay] = useState<{
+        name: string;
+        index: number;
+        total: number;
+        key: number; // changes on each switch to retrigger animation
+    } | null>(null);
+    const overlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const showPatternOverlay = useCallback((name: string, index: number, total: number) => {
+        // Clear any existing timeout
+        if (overlayTimeoutRef.current) clearTimeout(overlayTimeoutRef.current);
+
+        // Show overlay (key change retriggers the CSS animation)
+        setPatternOverlay({ name, index, total, key: Date.now() });
+
+        // Hide after hold + fade duration (1.5s hold + 1s fade)
+        overlayTimeoutRef.current = setTimeout(() => {
+            setPatternOverlay(null);
+        }, 2500);
+    }, []);
 
     const cameraControls = useCameraControls({
         useDebugControls: false,
@@ -126,28 +148,26 @@ const Renderer = (): JSX.Element => {
         GlobalApp.instance.renderOrthographic = false;
 
         // Set up camera orbit controller
-        const cameraOrbit = new CameraOrbitEntity({
-            orbitCenter: new THREE.Vector3(0, 0, 100),
-        });
+        const cameraOrbit = new CameraOrbitEntity();
         cameraOrbit.init();
 
         // Create and initialize GeomEntity
         const geomEntity = new GeomContainerEntity({
-            saturation: 1,
-            translationPerSecond: new THREE.Vector3(0, 0, 10),
-            // Pass dimensions from parent
             initialWidth: screenDimensions.width,
             initialHeight: screenDimensions.height,
         });
-
-        // Position the GeomEntity
-        geomEntity.object3D.position.set(0, 0, 0);
 
         // Async init
         geomEntity
             .init()
             .then(() => {
                 console.log("GeomEntity initialized successfully");
+
+                // Create pattern manager after geom is ready
+                const pm = new GeomPatternManager(cameraOrbit, geomEntity);
+                pm.init();
+                patternManager.current = pm;
+                showPatternOverlay(pm.patterns[pm.currentIndex].name, pm.currentIndex, pm.patterns.length);
             })
             .catch(err => {
                 console.error("Failed to initialize GeomEntity:", err);
@@ -161,8 +181,20 @@ const Renderer = (): JSX.Element => {
         (e: KeyboardEvent) => {
             if (!interactor.current) return;
             interactor.current.handleKey(e);
+
+            // Pattern switching with arrow keys
+            if (e.type === "keydown" && patternManager.current) {
+                const pm = patternManager.current;
+                if (e.key === "ArrowRight") {
+                    pm.nextPattern();
+                    showPatternOverlay(pm.patterns[pm.currentIndex].name, pm.currentIndex, pm.patterns.length);
+                } else if (e.key === "ArrowLeft") {
+                    pm.previousPattern();
+                    showPatternOverlay(pm.patterns[pm.currentIndex].name, pm.currentIndex, pm.patterns.length);
+                }
+            }
         },
-        [interactor]
+        [interactor, patternManager]
     );
 
     // Render!
@@ -192,6 +224,28 @@ const Renderer = (): JSX.Element => {
                 cursor: cursor,
             }}
         >
+            {patternOverlay && (
+                <div
+                    key={patternOverlay.key}
+                    className="fixed bottom-8 left-8 pointer-events-none font-jetbrains z-50"
+                    style={{ animation: "patternOverlayFade 2.5s ease-out forwards" }}
+                >
+                    <div className="text-white text-lg tracking-widest uppercase opacity-90">
+                        {patternOverlay.name}
+                    </div>
+                    <div className="flex gap-1.5 mt-2">
+                        {Array.from({ length: patternOverlay.total }, (_, i) => (
+                            <div
+                                key={i}
+                                className={`w-2 h-2 rounded-full border border-white/60 ${
+                                    i === patternOverlay.index ? "bg-white" : "bg-transparent"
+                                }`}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <canvas
                 width={screenDimensions.width}
                 height={screenDimensions.height}
