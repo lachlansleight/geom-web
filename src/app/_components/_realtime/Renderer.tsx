@@ -10,6 +10,7 @@ import useKeyboard from "_lib/hooks/useKeyboard";
 import GlobalApp from "_realtime/engine/systems/GlobalApp";
 import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import GeomContainerEntity from "_realtime/geom/GeomContainerEntity";
+import CameraOrbitEntity from "_realtime/camera/CameraOrbitEntity";
 
 export type RealtimeHoverTarget = {
     type: "node" | "port" | "connection";
@@ -124,9 +125,11 @@ const Renderer = (): JSX.Element => {
         // Use perspective camera for GEOM
         GlobalApp.instance.renderOrthographic = false;
 
-        // Position camera to view the geometry
-        GlobalApp.instance.perspCam.position.set(0, 0, 10);
-        GlobalApp.instance.perspCam.lookAt(0, 0, 0);
+        // Set up camera orbit controller
+        const cameraOrbit = new CameraOrbitEntity({
+            orbitCenter: new THREE.Vector3(0, 0, 100),
+        });
+        cameraOrbit.init();
 
         // Create and initialize GeomEntity
         const geomEntity = new GeomContainerEntity({

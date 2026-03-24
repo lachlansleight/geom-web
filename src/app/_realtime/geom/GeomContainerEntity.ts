@@ -108,7 +108,7 @@ export default class GeomContainerEntity extends RealtimeEntity {
         this.animator.applyToConfig(this.config, this.geomEntity.object3D);
 
         // this.geomEntity.object3D.position.copy(new THREE.Vector3(0, 0, -30));
-        this.geomEntity.object3D.position.z = -100;
+        this.geomEntity.object3D.position.z = 0;
 
         // Pass updated config to the GPU renderer
         this.geomEntity.config = this.config;

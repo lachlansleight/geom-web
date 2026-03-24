@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(ls:*)",
-      "Bash(find C:/Users/Lachlan/Dev/lachlan/geom-web -type d -name *GEOM* -o -name *unity* -o -name *Assets*)",
+      "Bash(find *)",
+      "Bash(grep *)",
       "Bash(npx tsc:*)",
       "Bash(npx next:*)"
     ]
