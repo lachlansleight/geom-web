@@ -95,7 +95,7 @@ const Renderer = (): JSX.Element => {
             200
         );
         const perspCam = new THREE.PerspectiveCamera(
-            75,
+            30,
             screenDimensions.width / screenDimensions.height,
             0.1,
             1000

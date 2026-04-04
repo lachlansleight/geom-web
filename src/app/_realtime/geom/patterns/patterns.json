@@ -14,7 +14,7 @@
             "saturation": 1.0,
             "brightness": 1.0,
             "translationPerSecond": [0, 0, 10],
-            "rotationPerSecond": [5, 10, 10],
+            "rotationPerSecond": [0, 0, 0],
             "huePerSecond": 0.0,
             "metallic": 0.0,
             "smoothness": 0.5,
