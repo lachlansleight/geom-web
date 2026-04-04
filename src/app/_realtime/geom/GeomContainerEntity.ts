@@ -2,6 +2,7 @@ import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import * as THREE from "three";
 import GeomEntity from "./GeomEntity";
 import GeomParameterAnimator from "./animation/GeomParameterAnimator";
+import AudioCapture from "_realtime/engine/systems/AudioCapture";
 
 export interface GeomConfig {
     sliceCount: number;
@@ -85,6 +86,13 @@ export default class GeomContainerEntity extends RealtimeEntity {
     geomEntity: GeomEntity;
     animator: GeomParameterAnimator;
 
+    _primedForHueOffset: boolean = false;
+    _silenceThreshold: number = 0.01;
+    _silenceDurationRequirement: number = 0.5;
+    _silenceDuration: number = 0;
+
+    _hueOffset: number = 0.001;
+
     constructor(config: Partial<GeomConfig> = {}) {
         super();
         this.config = { ...DEFAULT_CONFIG, ...config };
@@ -107,8 +115,28 @@ export default class GeomContainerEntity extends RealtimeEntity {
         // for slow-moving animation parameters).
         this.animator.applyToConfig(this.config, this.geomEntity.object3D);
 
-        // this.geomEntity.object3D.position.copy(new THREE.Vector3(0, 0, -30));
         this.geomEntity.object3D.position.z = 0;
+
+        if(AudioCapture.instance.active) {
+            if(this._primedForHueOffset) {
+                this._hueOffset += Math.random();
+                this._primedForHueOffset = false;
+                this._silenceDuration = 0;
+            } else {
+                if(AudioCapture.instance.momentary < this._silenceThreshold) {
+                    this._silenceDuration += deltaTime;
+                    if(this._silenceDuration > this._silenceDurationRequirement) {
+                        this._primedForHueOffset = true;
+                    }
+                } else {
+                    this._silenceDuration = 0;
+                }
+            }
+
+            this.config.brightness = THREE.MathUtils.clamp((AudioCapture.instance.flicker - 0.1) / 0.9, 0, 1);
+            this.config.hue = (AudioCapture.instance.pulse * 0.3 + 0.45) + AudioCapture.instance.flicker * 0.1;
+            this.config.hue += this._hueOffset;
+        }
 
         // Pass updated config to the GPU renderer
         this.geomEntity.config = this.config;
