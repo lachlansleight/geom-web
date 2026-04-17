@@ -23,7 +23,12 @@
             "dissolveMax": 12.0,
             "noiseScale": 12,
             "noiseStrength": 0.5,
-            "dissolveForwardBias": 0.9
+            "dissolveForwardBias": 0.9,
+            "particleRampTime": 1.0,
+            "particleForceStrength": 3,
+            "particleNoiseScale": 0.5,
+            "particleNoiseTimeScale": 0.3,
+            "particleDamping": 0.0
         },
         "animators": {
             "radius": {

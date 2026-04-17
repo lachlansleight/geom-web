@@ -7,11 +7,14 @@ import sliceSetNowShader from "./shaders/sliceSetNow.wgsl";
 import sliceTransformPerSecondShader from "./shaders/sliceTransformPerSecond.wgsl";
 import sliceOffsetPerSecondShader from "./shaders/sliceOffsetPerSecond.wgsl";
 import vertexGenerationShader from "./shaders/vertexGeneration.wgsl";
+import particleForceShader from "./shaders/particleForce.wgsl";
 import geomRenderShader from "./shaders/geomRender.wgsl";
 
 // Struct sizes (in bytes) - must match WGSL
 const SLICE_STRUCT_SIZE = 128; // 64 (mat4) + 4 + 12 + 12 + 12 + 4 + 4 + 4 + 4 + 4 + 4 = 128 (padded)
 const VERTEX_STRUCT_SIZE = 48; // 12 + 12 + 12 + 8 + 4 = 48
+const PARTICLE_STRUCT_SIZE = 32; // 2 × vec4<f32>
+const TRIANGLES_PER_SLICE = 512; // 64 cubes × 4 faces × 2 tris
 
 export interface GeomConfig {
     sliceCount: number;
@@ -49,6 +52,12 @@ export interface GeomConfig {
     noiseScale: number;
     noiseStrength: number;
     dissolveForwardBias: number;
+    // Particle force field
+    particleNoiseScale: number;
+    particleForceStrength: number;
+    particleRampTime: number;
+    particleDamping: number;
+    particleNoiseTimeScale: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -87,6 +96,11 @@ const DEFAULT_CONFIG: GeomConfig = {
     noiseScale: 0.8,
     noiseStrength: 0.5,
     dissolveForwardBias: 0.7,
+    particleNoiseScale: 0.5,
+    particleForceStrength: 0.3,
+    particleRampTime: 8.0,
+    particleDamping: 0.0,
+    particleNoiseTimeScale: 0.15,
 };
 
 export default class GeomEntity extends RealtimeEntity {
@@ -101,12 +115,14 @@ export default class GeomEntity extends RealtimeEntity {
     // Buffers
     private sliceBuffer: GPUBuffer | null = null;
     private vertexBuffer: GPUBuffer | null = null;
+    private particleBuffer: GPUBuffer | null = null;
 
     // Compute pipelines
     private setNowPipeline: GPUComputePipeline | null = null;
     private transformPerSecondPipeline: GPUComputePipeline | null = null;
     private offsetPerSecondPipeline: GPUComputePipeline | null = null;
     private vertexGenPipeline: GPUComputePipeline | null = null;
+    private particleForcePipeline: GPUComputePipeline | null = null;
 
     // Render pipeline
     private renderPipeline: GPURenderPipeline | null = null;
@@ -117,6 +133,7 @@ export default class GeomEntity extends RealtimeEntity {
     private transformPerSecondUniformBuffer: GPUBuffer | null = null;
     private offsetPerSecondUniformBuffer: GPUBuffer | null = null;
     private vertexGenUniformBuffer: GPUBuffer | null = null;
+    private particleForceUniformBuffer: GPUBuffer | null = null;
     private renderUniformBuffer: GPUBuffer | null = null;
 
     // Bind groups
@@ -124,6 +141,7 @@ export default class GeomEntity extends RealtimeEntity {
     private transformPerSecondBindGroup: GPUBindGroup | null = null;
     private offsetPerSecondBindGroup: GPUBindGroup | null = null;
     private vertexGenBindGroup: GPUBindGroup | null = null;
+    private particleForceBindGroup: GPUBindGroup | null = null;
     private renderBindGroup: GPUBindGroup | null = null;
 
     // State
@@ -307,6 +325,12 @@ export default class GeomEntity extends RealtimeEntity {
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         });
 
+        // Particle state buffer (one particle per triangle)
+        this.particleBuffer = this.device.createBuffer({
+            size: sliceCount * TRIANGLES_PER_SLICE * PARTICLE_STRUCT_SIZE,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+
         // Uniform buffers
         this.setNowUniformBuffer = this.device.createBuffer({
             size: 256, // Padded size
@@ -325,6 +349,11 @@ export default class GeomEntity extends RealtimeEntity {
 
         this.vertexGenUniformBuffer = this.device.createBuffer({
             size: 128,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        this.particleForceUniformBuffer = this.device.createBuffer({
+            size: 64,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -396,6 +425,18 @@ export default class GeomEntity extends RealtimeEntity {
             layout: "auto",
             compute: {
                 module: vertexGenModule,
+                entryPoint: "main",
+            },
+        });
+
+        // ParticleForce pipeline
+        const particleForceModule = this.device.createShaderModule({
+            code: particleForceShader,
+        });
+        this.particleForcePipeline = this.device.createComputePipeline({
+            layout: "auto",
+            compute: {
+                module: particleForceModule,
                 entryPoint: "main",
             },
         });
@@ -495,6 +536,23 @@ export default class GeomEntity extends RealtimeEntity {
             });
         }
 
+        // ParticleForce bind group
+        if (
+            this.particleForcePipeline &&
+            this.particleForceUniformBuffer &&
+            this.particleBuffer
+        ) {
+            this.particleForceBindGroup = this.device.createBindGroup({
+                layout: this.particleForcePipeline.getBindGroupLayout(0),
+                entries: [
+                    { binding: 0, resource: { buffer: this.sliceBuffer } },
+                    { binding: 1, resource: { buffer: this.vertexBuffer } },
+                    { binding: 2, resource: { buffer: this.particleBuffer } },
+                    { binding: 3, resource: { buffer: this.particleForceUniformBuffer } },
+                ],
+            });
+        }
+
         // Render bind group
         if (this.renderPipeline && this.renderUniformBuffer) {
             this.renderBindGroup = this.device.createBindGroup({
@@ -563,6 +621,7 @@ export default class GeomEntity extends RealtimeEntity {
         this.updateTransformPerSecondUniforms(deltaTime);
         this.updateOffsetPerSecondUniforms(deltaTime);
         this.updateVertexGenUniforms();
+        this.updateParticleForceUniforms(deltaTime);
 
         // Dispatch compute shaders
         this.dispatchCompute();
@@ -764,6 +823,27 @@ export default class GeomEntity extends RealtimeEntity {
         this.device.queue.writeBuffer(this.vertexGenUniformBuffer, 0, data);
     }
 
+    private updateParticleForceUniforms(deltaTime: number): void {
+        if (!this.device || !this.particleForceUniformBuffer) return;
+
+        // 2 × vec4<f32> = 8 floats. Pad to 16 for buffer alignment.
+        const data = new Float32Array(16);
+
+        // timeParams: x=time, y=dt, z=rampTime, w=forceStrength
+        data[0] = this.time;
+        data[1] = deltaTime;
+        data[2] = this.config.particleRampTime;
+        data[3] = this.config.particleForceStrength;
+
+        // noiseParams: x=noiseScale, y=damping, z=noiseTimeScale, w=unused
+        data[4] = this.config.particleNoiseScale;
+        data[5] = this.config.particleDamping;
+        data[6] = this.config.particleNoiseTimeScale;
+        data[7] = 0;
+
+        this.device.queue.writeBuffer(this.particleForceUniformBuffer, 0, data);
+    }
+
     private dispatchCompute(): void {
         if (!this.device) return;
 
@@ -802,6 +882,16 @@ export default class GeomEntity extends RealtimeEntity {
             pass.setPipeline(this.vertexGenPipeline);
             pass.setBindGroup(0, this.vertexGenBindGroup);
             pass.dispatchWorkgroups(this.config.sliceCount);
+            pass.end();
+        }
+
+        // ParticleForce - one invocation per triangle, 64 per workgroup
+        if (this.particleForcePipeline && this.particleForceBindGroup) {
+            const pass = commandEncoder.beginComputePass();
+            pass.setPipeline(this.particleForcePipeline);
+            pass.setBindGroup(0, this.particleForceBindGroup);
+            const totalTriangles = this.config.sliceCount * TRIANGLES_PER_SLICE;
+            pass.dispatchWorkgroups(Math.ceil(totalTriangles / 64));
             pass.end();
         }
 
@@ -1041,10 +1131,12 @@ export default class GeomEntity extends RealtimeEntity {
         // Clean up WebGPU resources
         this.sliceBuffer?.destroy();
         this.vertexBuffer?.destroy();
+        this.particleBuffer?.destroy();
         this.setNowUniformBuffer?.destroy();
         this.transformPerSecondUniformBuffer?.destroy();
         this.offsetPerSecondUniformBuffer?.destroy();
         this.vertexGenUniformBuffer?.destroy();
+        this.particleForceUniformBuffer?.destroy();
         this.renderUniformBuffer?.destroy();
         this.depthTexture?.destroy();
         this.debugStagingBuffer?.destroy();

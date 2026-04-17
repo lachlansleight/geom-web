@@ -41,6 +41,12 @@ export interface GeomConfig {
     noiseStrength: number;
     /** 0 = uniform dissolve distance, 1 = dissolve distance drops to zero at camera sides */
     dissolveForwardBias: number;
+    // Particle force field
+    particleNoiseScale: number;
+    particleForceStrength: number;
+    particleRampTime: number;
+    particleDamping: number;
+    particleNoiseTimeScale: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -79,6 +85,11 @@ const DEFAULT_CONFIG: GeomConfig = {
     noiseScale: 12,
     noiseStrength: 0.5,
     dissolveForwardBias: 0.9,
+    particleNoiseScale: 0.3,
+    particleForceStrength: 3,
+    particleRampTime: 3.0,
+    particleDamping: 0.0,
+    particleNoiseTimeScale: 1,
 };
 
 export default class GeomContainerEntity extends RealtimeEntity {
