@@ -10,7 +10,7 @@
         },
         "geom": {
             "sliceCount": 1000,
-            "cubeCount": 32,
+            "cubeCount": 64,
             "saturation": 1.0,
             "brightness": 1.0,
             "translationPerSecond": [0, 0, 10],

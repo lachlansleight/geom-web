@@ -1,6 +1,8 @@
 // Per-triangle particle force compute shader
 // Treats each triangle as a particle with persistent state (offset + velocity),
-// integrates a 3D-noise force field ramped by time-since-slice-set.
+// integrates a 3D-noise force field ramped by time-since-slice-set,
+// and shrinks the triangle about its own (drifted) centroid toward an
+// equilateral shape over a configurable lifetime.
 // Runs after vertexGeneration — reads base positions, writes displaced positions back.
 
 struct CubeTunnelSlice {
@@ -20,7 +22,7 @@ struct GeomVertex {
 }
 
 // 32 bytes per particle.
-// offset.xyz = cumulative world-space displacement; offset.w = reserved
+// offset.xyz = cumulative world-space drift; offset.w = reserved
 // velocity.xyz = velocity; velocity.w = last-seen setTime (for self-healing reset)
 struct Particle {
     offset: vec4<f32>,
@@ -28,8 +30,10 @@ struct Particle {
 }
 
 struct ParticleForceUniforms {
-    timeParams: vec4<f32>,   // x=time, y=dt, z=rampTime, w=forceStrength
-    noiseParams: vec4<f32>,  // x=noiseScale, y=damping, z=noiseTimeScale, w=unused
+    timeParams: vec4<f32>,    // x=time, y=dt, z=rampTime, w=forceStrength
+    noiseParams: vec4<f32>,   // x=noiseScale, y=damping, z=noiseTimeScale, w=unused
+    shrinkParams: vec4<f32>,  // x=shrinkTime, y=minSize, z=unused, w=unused
+    translation: vec4<f32>,   // xyz=constant world translation per second, w=unused
 }
 
 @group(0) @binding(0) var<storage, read> sliceBuffer: array<CubeTunnelSlice>;
@@ -96,28 +100,14 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
     let dt            = uniforms.timeParams.y;
     let rampTime      = uniforms.timeParams.z;
     let forceStrength = uniforms.timeParams.w;
-    let noiseScale    = uniforms.noiseParams.x;
-    let damping       = uniforms.noiseParams.y;
+    let noiseScale     = uniforms.noiseParams.x;
+    let damping        = uniforms.noiseParams.y;
     let noiseTimeScale = uniforms.noiseParams.z;
+    let shrinkTime = uniforms.shrinkParams.x;
+    let minSize    = uniforms.shrinkParams.y;
+    let translationPerSec = uniforms.translation.xyz;
 
     var particle = particleBuffer[triIdx];
-
-    // Self-healing reset: if this slice has been re-set since we last touched it,
-    // zero our accumulated offset/velocity and adopt the new setTime.
-    if (particle.velocity.w != setTime) {
-        particle.offset = vec4<f32>(0.0, 0.0, 0.0, 0.0);
-        particle.velocity = vec4<f32>(0.0, 0.0, 0.0, setTime);
-    }
-
-    // Slices that have never been setNow'd (setTime == 0) stay at rest.
-    // Also prevents the whole buffer from drifting at startup.
-    if (setTime <= 0.0) {
-        particleBuffer[triIdx] = particle;
-        return;
-    }
-
-    let timeSinceSet = time - setTime;
-    let intensity = smoothstep(0.0, max(rampTime, 0.0001), timeSinceSet);
 
     let v0Idx = triIdx * 3u;
     let v1Idx = v0Idx + 1u;
@@ -127,12 +117,27 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
     let basePos1 = vertexBuffer[v1Idx].position;
     let basePos2 = vertexBuffer[v2Idx].position;
     let centroidBase = (basePos0 + basePos1 + basePos2) / 3.0;
-    let samplePos = centroidBase + particle.offset.xyz;
 
+    // Self-healing reset: if this slice has been re-set since we last touched it,
+    // zero our accumulated drift state.
+    if (particle.velocity.w != setTime) {
+        particle.offset = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+        particle.velocity = vec4<f32>(0.0, 0.0, 0.0, setTime);
+    }
+
+    // Slices that have never been setNow'd (setTime == 0) stay at rest.
+    if (setTime <= 0.0) {
+        particleBuffer[triIdx] = particle;
+        return;
+    }
+
+    let timeSinceSet = time - setTime;
+    let intensity = smoothstep(0.0, max(rampTime, 0.0001), timeSinceSet);
+
+    let samplePos = centroidBase + particle.offset.xyz;
     let force = noiseVec3(samplePos * noiseScale, time * noiseTimeScale) * forceStrength;
 
     var newVelocity = particle.velocity.xyz + force * intensity * dt;
-    // Exponential damping — frame-rate independent.
     newVelocity = newVelocity * exp(-damping * dt);
     let newOffset = particle.offset.xyz + newVelocity * dt;
 
@@ -140,16 +145,61 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
     particle.velocity = vec4<f32>(newVelocity, setTime);
     particleBuffer[triIdx] = particle;
 
-    // Translate all three verts by the same offset so normals stay valid.
+    let lifeFactor = saturate(timeSinceSet / max(shrinkTime, 0.0001));
+    let scale = mix(1.0, minSize, lifeFactor);
+
+    // Blend toward an equilateral target in the triangle's own plane as the
+    // particle ages. Target keeps the same centroid, same mean radius, and
+    // same plane normal — so the face stays flat, just rounds out.
+    let e0 = basePos0 - centroidBase;
+    let e1 = basePos1 - centroidBase;
+    let e2 = basePos2 - centroidBase;
+    let meanR = (length(e0) + length(e1) + length(e2)) / 3.0;
+
+    // Orthonormal basis in the triangle's plane. Use e0 for u so vert 0 stays
+    // on the u axis — vert 1 and 2 rotate into their 120° / 240° positions.
+    let triNormal = normalize(cross(basePos1 - basePos0, basePos2 - basePos0));
+    let uAxis = normalize(e0);
+    let vAxis = normalize(cross(triNormal, uAxis));
+
+    const C120: f32 = -0.5;
+    const S120: f32 =  0.8660254;  //  sin(120°)
+    const C240: f32 = -0.5;
+    const S240: f32 = -0.8660254;  //  sin(240°)
+
+    let eq0 = centroidBase + meanR * uAxis;
+    let eq1 = centroidBase + meanR * (C120 * uAxis + S120 * vAxis);
+    let eq2 = centroidBase + meanR * (C240 * uAxis + S240 * vAxis);
+
+    let eqBlend = lifeFactor;
+    let shape0 = mix(basePos0, eq0, eqBlend);
+    let shape1 = mix(basePos1, eq1, eqBlend);
+    let shape2 = mix(basePos2, eq2, eqBlend);
+
+    // Shrink about the triangle's own (drifted) centroid, then apply the
+    // uniform world-space translation accumulated since this slice was set.
+    let driftedCentroid = centroidBase + newOffset;
+    let worldTranslation = translationPerSec * timeSinceSet;
+    let finalPos0 = mix(driftedCentroid, shape0 + newOffset, scale) + worldTranslation;
+    let finalPos1 = mix(driftedCentroid, shape1 + newOffset, scale) + worldTranslation;
+    let finalPos2 = mix(driftedCentroid, shape2 + newOffset, scale) + worldTranslation;
+
+    // Recompute the normal from the final shape — the equilateral blend
+    // changes edge directions, so the vertexGeneration normal is stale.
+    let finalNormal = normalize(cross(finalPos1 - finalPos0, finalPos2 - finalPos0));
+
     var v0 = vertexBuffer[v0Idx];
-    v0.position = basePos0 + newOffset;
+    v0.position = finalPos0;
+    v0.normal = finalNormal;
     vertexBuffer[v0Idx] = v0;
 
     var v1 = vertexBuffer[v1Idx];
-    v1.position = basePos1 + newOffset;
+    v1.position = finalPos1;
+    v1.normal = finalNormal;
     vertexBuffer[v1Idx] = v1;
 
     var v2 = vertexBuffer[v2Idx];
-    v2.position = basePos2 + newOffset;
+    v2.position = finalPos2;
+    v2.normal = finalNormal;
     vertexBuffer[v2Idx] = v2;
 }

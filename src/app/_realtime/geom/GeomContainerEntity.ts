@@ -47,6 +47,9 @@ export interface GeomConfig {
     particleRampTime: number;
     particleDamping: number;
     particleNoiseTimeScale: number;
+    particleMinSize: number;
+    particleShrinkTime: number;
+    particleTranslationPerSecond: THREE.Vector3;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -54,7 +57,7 @@ export interface GeomConfig {
 
 const DEFAULT_CONFIG: GeomConfig = {
     sliceCount: 1000,
-    cubeCount: 32,
+    cubeCount: 64,
     radius: 2.0,
     spread: 1.0,
     cubeFill: 0.5,
@@ -87,9 +90,12 @@ const DEFAULT_CONFIG: GeomConfig = {
     dissolveForwardBias: 0.9,
     particleNoiseScale: 0.3,
     particleForceStrength: 3,
-    particleRampTime: 3.0,
-    particleDamping: 0.0,
+    particleRampTime: 6.0,
+    particleDamping: 0.1,
     particleNoiseTimeScale: 1,
+    particleMinSize: 0.3,
+    particleShrinkTime: 5.0,
+    particleTranslationPerSecond: new THREE.Vector3(0, 0, 0),
 };
 
 export default class GeomContainerEntity extends RealtimeEntity {

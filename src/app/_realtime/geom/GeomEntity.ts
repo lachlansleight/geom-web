@@ -13,7 +13,7 @@ import geomRenderShader from "./shaders/geomRender.wgsl";
 // Struct sizes (in bytes) - must match WGSL
 const SLICE_STRUCT_SIZE = 128; // 64 (mat4) + 4 + 12 + 12 + 12 + 4 + 4 + 4 + 4 + 4 + 4 = 128 (padded)
 const VERTEX_STRUCT_SIZE = 48; // 12 + 12 + 12 + 8 + 4 = 48
-const PARTICLE_STRUCT_SIZE = 32; // 2 × vec4<f32>
+const PARTICLE_STRUCT_SIZE = 32; // 2 × vec4<f32> (offset, velocity)
 const TRIANGLES_PER_SLICE = 512; // 64 cubes × 4 faces × 2 tris
 
 export interface GeomConfig {
@@ -58,6 +58,9 @@ export interface GeomConfig {
     particleRampTime: number;
     particleDamping: number;
     particleNoiseTimeScale: number;
+    particleMinSize: number;
+    particleShrinkTime: number;
+    particleTranslationPerSecond: THREE.Vector3;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -101,6 +104,9 @@ const DEFAULT_CONFIG: GeomConfig = {
     particleRampTime: 8.0,
     particleDamping: 0.0,
     particleNoiseTimeScale: 0.15,
+    particleMinSize: 0.1,
+    particleShrinkTime: 5.0,
+    particleTranslationPerSecond: new THREE.Vector3(0, 0, 0),
 };
 
 export default class GeomEntity extends RealtimeEntity {
@@ -826,7 +832,7 @@ export default class GeomEntity extends RealtimeEntity {
     private updateParticleForceUniforms(deltaTime: number): void {
         if (!this.device || !this.particleForceUniformBuffer) return;
 
-        // 2 × vec4<f32> = 8 floats. Pad to 16 for buffer alignment.
+        // 3 × vec4<f32> = 12 floats. Pad to 16 for buffer alignment.
         const data = new Float32Array(16);
 
         // timeParams: x=time, y=dt, z=rampTime, w=forceStrength
@@ -840,6 +846,18 @@ export default class GeomEntity extends RealtimeEntity {
         data[5] = this.config.particleDamping;
         data[6] = this.config.particleNoiseTimeScale;
         data[7] = 0;
+
+        // shrinkParams: x=shrinkTime, y=minSize, z=unused, w=unused
+        data[8] = this.config.particleShrinkTime;
+        data[9] = this.config.particleMinSize;
+        data[10] = 0;
+        data[11] = 0;
+
+        // translation: xyz=translation per second, w=unused
+        data[12] = this.config.particleTranslationPerSecond.x;
+        data[13] = this.config.particleTranslationPerSecond.y;
+        data[14] = this.config.particleTranslationPerSecond.z;
+        data[15] = 0;
 
         this.device.queue.writeBuffer(this.particleForceUniformBuffer, 0, data);
     }
