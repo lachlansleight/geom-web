@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import GlobalApp from "_realtime/engine/systems/GlobalApp";
+import FloorProbeService from "_realtime/camera/FloorProbeService";
+import TunnelPolylineService from "./TunnelPolylineService";
 
 // Import shader sources as strings
 import sliceSetNowShader from "./shaders/sliceSetNow.wgsl";
@@ -150,6 +152,14 @@ export default class GeomEntity extends RealtimeEntity {
     private particleForceBindGroup: GPUBindGroup | null = null;
     private renderBindGroup: GPUBindGroup | null = null;
 
+    // Floor probe (CPU-readable XY/radius for the slice closest to a target Z)
+    private _floorProbe: FloorProbeService | null = null;
+    /** World Z plane the probe samples against. Defaults to 60 (floor-follow rail). */
+    floorProbeCameraZ: number = 60;
+
+    /** Multi-Z floor samples for debug polyline (same GPU logic as floor probe). */
+    private _tunnelPolyline: TunnelPolylineService | null = null;
+
     // State
     private currentSlice: number = 0;
     private isInitialized: boolean = false;
@@ -168,6 +178,16 @@ export default class GeomEntity extends RealtimeEntity {
     constructor(config: Partial<GeomConfig> = {}) {
         super();
         this.config = { ...DEFAULT_CONFIG, ...config };
+    }
+
+    /** Latest GPU-probed floor sample for the current camera Z plane (1 frame stale). */
+    get floorProbe(): FloorProbeService | null {
+        return this._floorProbe;
+    }
+
+    /** Float32 packed vec4 per Z sample: x, y, sampleZ, exists (~1 frame stale). */
+    get tunnelPolylineLatest(): Float32Array | null {
+        return this._tunnelPolyline?.latest ?? null;
     }
 
     async init(): Promise<void> {
@@ -210,6 +230,22 @@ export default class GeomEntity extends RealtimeEntity {
 
         // Initialize slice buffer with empty slices
         this.initializeSliceBuffer();
+
+        // Floor probe (must come after sliceBuffer exists)
+        if (this.sliceBuffer) {
+            this._floorProbe = new FloorProbeService(
+                this.device,
+                this.sliceBuffer,
+                this.config.sliceCount
+            );
+            this._floorProbe.setCameraZ(this.floorProbeCameraZ);
+
+            this._tunnelPolyline = new TunnelPolylineService(
+                this.device,
+                this.sliceBuffer,
+                this.config.sliceCount
+            );
+        }
 
         this.isInitialized = true;
         console.log("GeomEntity initialized with WebGPU");
@@ -913,7 +949,28 @@ export default class GeomEntity extends RealtimeEntity {
             pass.end();
         }
 
+        // Floor probe - encoded into the same command buffer so it sees this
+        // frame's slice transforms.
+        if (this._floorProbe) {
+            this._floorProbe.setCameraZ(this.floorProbeCameraZ);
+            this._floorProbe.setSliceCount(this.config.sliceCount);
+            this._floorProbe.dispatch(commandEncoder);
+        }
+
+        if (this._tunnelPolyline) {
+            this._tunnelPolyline.setSliceCount(this.config.sliceCount);
+            this._tunnelPolyline.dispatch(commandEncoder);
+        }
+
         this.device.queue.submit([commandEncoder.finish()]);
+
+        // Kick the async copy-out + map for the camera to consume next frame.
+        if (this._floorProbe) {
+            this._floorProbe.kickReadback();
+        }
+        if (this._tunnelPolyline) {
+            this._tunnelPolyline.kickReadback();
+        }
     }
 
     private render(): void {
@@ -1147,6 +1204,8 @@ export default class GeomEntity extends RealtimeEntity {
 
     destroy(): void {
         // Clean up WebGPU resources
+        this._floorProbe?.destroy();
+        this._tunnelPolyline?.destroy();
         this.sliceBuffer?.destroy();
         this.vertexBuffer?.destroy();
         this.particleBuffer?.destroy();

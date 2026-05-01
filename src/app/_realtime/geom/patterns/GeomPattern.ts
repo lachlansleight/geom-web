@@ -31,16 +31,37 @@ export interface AnimatorDef {
     shuffler: ShufflerDef;
 }
 
+/** Original orbit-based camera (oscillator-driven spherical orbit around a point). */
+export interface OrbitCameraDef {
+    mode?: "orbit";
+    orbitCenter: [number, number, number];
+    lookAtAmount: number;
+    radius: OscillatorDef;
+    theta: OscillatorDef;
+    phi: OscillatorDef;
+}
+
+/** Camera that pins Z at a plane and rides on the ring's floor at that plane. */
+export interface FloorFollowCameraDef {
+    mode: "floorFollow";
+    /** Camera Z plane the floor probe samples. Default 60. */
+    cameraZ?: number;
+    /** Distance below the ring floor at which the camera parks. */
+    verticalOffset: number;
+    /** Error halves every this many seconds (frame-rate independent). Default 0.5. */
+    halfLifeSeconds?: number;
+    /** Distance ahead (in +Z) of the probe ring centre to look at. */
+    lookAtAhead: number;
+    /** Maximum XY units per second the camera may move (anti-snap). Default 60. */
+    maxSpeed?: number;
+}
+
+export type CameraDef = OrbitCameraDef | FloorFollowCameraDef;
+
 export interface GeomPattern {
     name: string;
 
-    camera: {
-        orbitCenter: [number, number, number];
-        lookAtAmount: number;
-        radius: OscillatorDef;
-        theta: OscillatorDef;
-        phi: OscillatorDef;
-    };
+    camera: CameraDef;
 
     geom: {
         sliceCount?: number;

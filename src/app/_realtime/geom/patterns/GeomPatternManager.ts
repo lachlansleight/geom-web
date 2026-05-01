@@ -2,14 +2,15 @@ import * as THREE from "three";
 import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import GeomContainerEntity from "../GeomContainerEntity";
 import CameraOrbitEntity from "_realtime/camera/CameraOrbitEntity";
+import CameraFloorFollowEntity from "_realtime/camera/CameraFloorFollowEntity";
 import type { GeomPattern } from "./GeomPattern";
 import type { InterpolatorConfig } from "../animation/ParameterInterpolatorEntity";
 import patternsJson from "./patterns.json";
 
 /**
  * Manages switching between GeomPatterns.
- * Holds references to the camera orbit and geom container entities,
- * and applies pattern configs when switching.
+ * Holds references to the camera entities (orbit + floor-follow) and the geom
+ * container entity, and applies pattern configs when switching.
  *
  * Use left/right arrow keys to switch patterns.
  */
@@ -18,16 +19,23 @@ export default class GeomPatternManager extends RealtimeEntity {
     currentIndex: number = 0;
 
     private cameraOrbit: CameraOrbitEntity;
+    private cameraFloorFollow: CameraFloorFollowEntity;
     private geomContainer: GeomContainerEntity;
 
     constructor(
         cameraOrbit: CameraOrbitEntity,
+        cameraFloorFollow: CameraFloorFollowEntity,
         geomContainer: GeomContainerEntity,
     ) {
         super();
         this.object3D.name = "GeomPatternManager";
         this.cameraOrbit = cameraOrbit;
+        this.cameraFloorFollow = cameraFloorFollow;
         this.geomContainer = geomContainer;
+
+        // Wire the floor-follow camera to the geom container so it can read
+        // the GPU floor probe without us routing it on every pattern switch.
+        this.cameraFloorFollow.setGeomContainer(this.geomContainer);
 
         this.patterns = patternsJson as unknown as GeomPattern[];
     }
@@ -66,13 +74,29 @@ export default class GeomPatternManager extends RealtimeEntity {
 
     private applyCameraConfig(pattern: GeomPattern): void {
         const cam = pattern.camera;
-        this.cameraOrbit.applyConfig({
-            orbitCenter: new THREE.Vector3(...cam.orbitCenter),
-            lookAtAmount: cam.lookAtAmount,
-            radius: cam.radius,
-            theta: cam.theta,
-            phi: cam.phi,
-        });
+        const mode = cam.mode ?? "orbit";
+
+        if (mode === "floorFollow") {
+            this.cameraOrbit.setEnabled(false);
+            this.cameraFloorFollow.setEnabled(true);
+            this.cameraFloorFollow.applyConfig({
+                verticalOffset: cam.verticalOffset,
+                halfLifeSeconds: cam.halfLifeSeconds ?? 0.5,
+                lookAtAhead: cam.lookAtAhead,
+                cameraZ: cam.cameraZ ?? 60,
+                maxSpeed: cam.maxSpeed ?? 60,
+            });
+        } else {
+            this.cameraFloorFollow.setEnabled(false);
+            this.cameraOrbit.setEnabled(true);
+            this.cameraOrbit.applyConfig({
+                orbitCenter: new THREE.Vector3(...cam.orbitCenter),
+                lookAtAmount: cam.lookAtAmount,
+                radius: cam.radius,
+                theta: cam.theta,
+                phi: cam.phi,
+            });
+        }
     }
 
     private applyGeomConfig(pattern: GeomPattern): void {

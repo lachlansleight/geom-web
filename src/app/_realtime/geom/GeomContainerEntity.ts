@@ -3,6 +3,7 @@ import * as THREE from "three";
 import GeomEntity from "./GeomEntity";
 import GeomParameterAnimator from "./animation/GeomParameterAnimator";
 import AudioCapture from "_realtime/engine/systems/AudioCapture";
+import type FloorProbeService from "_realtime/camera/FloorProbeService";
 
 export interface GeomConfig {
     sliceCount: number;
@@ -124,6 +125,16 @@ export default class GeomContainerEntity extends RealtimeEntity {
         super.init();
         this.animator.init();
         this.geomEntity.init();
+    }
+
+    /** Forward to the underlying geom entity's GPU floor probe (may be null until init). */
+    get floorProbe(): FloorProbeService | null {
+        return this.geomEntity.floorProbe;
+    }
+
+    /** Multi-Z tunnel floor samples for debug overlay (~1 frame stale). */
+    get tunnelPolylineLatest(): Float32Array | null {
+        return this.geomEntity.tunnelPolylineLatest;
     }
 
     update(time: number, deltaTime: number): void {

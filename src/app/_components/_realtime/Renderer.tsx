@@ -8,9 +8,12 @@ import useCameraControls from "_realtime/engine/cameraControls";
 import RealtimeInteractor from "_realtime/engine/interaction/interactor";
 import useKeyboard from "_lib/hooks/useKeyboard";
 import GlobalApp from "_realtime/engine/systems/GlobalApp";
+import { createWorldReferenceGrid } from "_realtime/engine/worldReferenceGrid";
+import TunnelPolylineDebug from "_realtime/engine/tunnelPolylineDebug";
 import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import GeomContainerEntity from "_realtime/geom/GeomContainerEntity";
 import CameraOrbitEntity from "_realtime/camera/CameraOrbitEntity";
+import CameraFloorFollowEntity from "_realtime/camera/CameraFloorFollowEntity";
 import GeomPatternManager from "_realtime/geom/patterns/GeomPatternManager";
 import SkyGradientEntity from "_realtime/sky/SkyGradientEntity";
 
@@ -28,6 +31,8 @@ const Renderer = (): JSX.Element => {
     const interactor = useRef<RealtimeInteractor | null>(null);
     const [cursor, setCursor] = useState("");
     const patternManager = useRef<GeomPatternManager | null>(null);
+    const geomContainerRef = useRef<GeomContainerEntity | null>(null);
+    const tunnelPolylineDebugRef = useRef<TunnelPolylineDebug | null>(null);
     const [patternOverlay, setPatternOverlay] = useState<{
         name: string;
         index: number;
@@ -118,6 +123,7 @@ const Renderer = (): JSX.Element => {
 
         try {
             new GlobalApp(renderer, orthoCam, perspCam, scene);
+            scene.add(createWorldReferenceGrid());
             setHasGlobalAppInstance(true);
         } catch (e: any) {
             console.log("global app already exists, why are we we-triggering this?");
@@ -152,9 +158,12 @@ const Renderer = (): JSX.Element => {
         const sky = new SkyGradientEntity();
         sky.init();
 
-        // Set up camera orbit controller
+        // Set up camera entities (orbit + floor-follow). The pattern manager
+        // enables exactly one of them per pattern.
         const cameraOrbit = new CameraOrbitEntity();
         cameraOrbit.init();
+        const cameraFloorFollow = new CameraFloorFollowEntity();
+        cameraFloorFollow.init();
 
         // Create and initialize GeomEntity
         const geomEntity = new GeomContainerEntity({
@@ -168,8 +177,14 @@ const Renderer = (): JSX.Element => {
             .then(() => {
                 console.log("GeomEntity initialized successfully");
 
+                geomContainerRef.current = geomEntity;
+
+                // if (GlobalApp.instance && !tunnelPolylineDebugRef.current) {
+                //     tunnelPolylineDebugRef.current = new TunnelPolylineDebug(GlobalApp.instance.scene);
+                // }
+
                 // Create pattern manager after geom is ready
-                const pm = new GeomPatternManager(cameraOrbit, geomEntity);
+                const pm = new GeomPatternManager(cameraOrbit, cameraFloorFollow, geomEntity);
                 pm.init();
                 patternManager.current = pm;
                 showPatternOverlay(pm.patterns[pm.currentIndex].name, pm.currentIndex, pm.patterns.length);
@@ -210,6 +225,11 @@ const Renderer = (): JSX.Element => {
             Object.values(GlobalApp.instance.entities).forEach((entity: RealtimeEntity) => {
                 entity.update(time, delta);
             });
+
+            tunnelPolylineDebugRef.current?.update(geomContainerRef.current);
+
+            const persp = GlobalApp.instance.perspCam;
+            console.log(persp.position.x.toFixed(3), persp.position.y.toFixed(3), persp.position.z.toFixed(3));
 
             // Render scene
             GlobalApp.instance.renderer.render(

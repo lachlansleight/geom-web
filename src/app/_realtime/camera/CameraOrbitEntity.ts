@@ -37,6 +37,9 @@ const DEFAULT_CONFIG: CameraOrbitConfig = {
 export default class CameraOrbitEntity extends RealtimeEntity {
     config: CameraOrbitConfig;
 
+    /** When false, update() is a no-op so another camera entity can drive the camera. */
+    enabled: boolean = true;
+
     oscillatorRadius: Oscillator;
     oscillatorTheta: Oscillator;
     oscillatorPhi: Oscillator;
@@ -87,7 +90,12 @@ export default class CameraOrbitEntity extends RealtimeEntity {
         }
     }
 
+    setEnabled(enabled: boolean): void {
+        this.enabled = enabled;
+    }
+
     update(_time: number, deltaTime: number): void {
+        if (!this.enabled) return;
         if (!this.config.playing) return;
 
         const camera = GlobalApp.instance?.perspCam;
