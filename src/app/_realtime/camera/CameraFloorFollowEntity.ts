@@ -11,12 +11,17 @@ export interface CameraFloorFollowConfig {
      * Frame-rate independent: uses `1 - exp(-ln(2) * dt / halfLifeSeconds)` per step.
      */
     halfLifeSeconds: number;
-    /** How far ahead (in +Z) of the probe ring centre to look. */
+    /** How far ahead (in +Z) of the probe ring centre to look at. */
     lookAtAhead: number;
-    /** Camera Z plane the probe is sampled at. */
+    /** Camera Z plane the floor probe samples at. */
     cameraZ: number;
     /** Maximum XY units the camera may move in a single second (anti-snap clamp). */
     maxSpeed: number;
+    /**
+     * Camera quaternion blends toward lookAt(camera → SetNow ring centre) with this half-life (seconds).
+     * Use 0 to snap rotation each frame.
+     */
+    lookRotationHalfLifeSeconds: number;
 }
 
 const DEFAULT_CONFIG: CameraFloorFollowConfig = {
@@ -25,20 +30,18 @@ const DEFAULT_CONFIG: CameraFloorFollowConfig = {
     lookAtAhead: 8,
     cameraZ: 80,
     maxSpeed: 60,
+    lookRotationHalfLifeSeconds: 0.35,
 };
 
-/** Fixed orientation: identity × rotateY(π) — camera looks along -Z in world space. */
-const FLOOR_FOLLOW_QUAT = new THREE.Quaternion(0, 1, 0, 0);
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
 /**
  * Camera controller that pins the perspective camera at a fixed world Z
- * plane and drives its X/Y to sit just under the geom ring's "floor"
- * (lowest world-Y point of the ring at that Z plane).
+ * plane and drives its X/Y to sit on the geom ring's sampled floor.
  *
- * The floor is sampled on the GPU by `FloorProbeService` (owned by the
- * GeomEntity); we simply read its latest sample each frame, smooth it,
- * and update the camera. Look direction blends toward a point a few
- * units further down the tunnel for a nicer forward feel.
+ * Rotation interpolates toward looking at the **current SetNow ring centre**
+ * (same `object3D` world position that feeds the GPU slice transform), driven
+ * by the oscillation system on the CPU — no GPU readback for look direction.
  */
 export default class CameraFloorFollowEntity extends RealtimeEntity {
     config: CameraFloorFollowConfig;
@@ -52,6 +55,13 @@ export default class CameraFloorFollowEntity extends RealtimeEntity {
     private smoothedX: number = 0;
     private smoothedY: number = 0;
     private hasInitialSample: boolean = false;
+
+    /** First full frame after enable: snap rotation to target, then blend. */
+    private rotationInitialized: boolean = false;
+
+    private readonly circleCenterWorld = new THREE.Vector3();
+    private readonly lookMatrix = new THREE.Matrix4();
+    private readonly targetQuat = new THREE.Quaternion();
 
     constructor(config: Partial<CameraFloorFollowConfig> = {}) {
         super();
@@ -71,14 +81,13 @@ export default class CameraFloorFollowEntity extends RealtimeEntity {
     setEnabled(enabled: boolean): void {
         this.enabled = enabled;
         if (!enabled) {
-            // Drop initial-sample flag so a re-enable will snap to the next probe.
             this.hasInitialSample = false;
+            this.rotationInitialized = false;
         }
     }
 
     applyConfig(config: Partial<CameraFloorFollowConfig>): void {
         this.config = { ...this.config, ...config };
-        // Make sure the geom probe samples at the configured Z plane.
         if (this.geom?.geomEntity) {
             this.geom.geomEntity.floorProbeCameraZ = this.config.cameraZ;
         }
@@ -91,45 +100,60 @@ export default class CameraFloorFollowEntity extends RealtimeEntity {
         const camera = GlobalApp.instance?.perspCam;
         if (!camera) return;
 
+        const geomObj = this.geom.geomEntity.object3D;
+        geomObj.updateMatrixWorld(true);
+        geomObj.getWorldPosition(this.circleCenterWorld);
+
         const probe = this.geom.floorProbe;
         const sample = probe?.latest ?? null;
 
-        if (!sample || !sample.exists) {
-            // No probe data yet: leave camera where it is (or initialise once).
-            return;
-        }
+        if (sample?.exists) {
+            const targetX = sample.x;
+            const targetY = sample.y + this.config.verticalOffset;
 
-        const targetX = sample.x;
-        const targetY = sample.y + this.config.verticalOffset;
+            if (!this.hasInitialSample) {
+                this.smoothedX = targetX;
+                this.smoothedY = targetY;
+                this.hasInitialSample = true;
+            } else {
+                const halfLife = Math.max(this.config.halfLifeSeconds, 1e-4);
+                const t = 1 - Math.exp((-Math.LN2 * Math.max(deltaTime, 0)) / halfLife);
+                let dx = (targetX - this.smoothedX) * t;
+                let dy = (targetY - this.smoothedY) * t;
 
-        if (!this.hasInitialSample) {
-            this.smoothedX = targetX;
-            this.smoothedY = targetY;
-            this.hasInitialSample = true;
-        } else {
-            // Half-life smoothing: fraction of remaining error closed per frame.
-            const halfLife = Math.max(this.config.halfLifeSeconds, 1e-4);
-            const t = 1 - Math.exp((-Math.LN2 * Math.max(deltaTime, 0)) / halfLife);
-            let dx = (targetX - this.smoothedX) * t;
-            let dy = (targetY - this.smoothedY) * t;
+                const maxStep = this.config.maxSpeed * Math.max(deltaTime, 0);
+                const stepLen = Math.hypot(dx, dy);
+                if (stepLen > maxStep && stepLen > 0) {
+                    const scale = maxStep / stepLen;
+                    dx *= scale;
+                    dy *= scale;
+                }
 
-            // Anti-snap clamp on per-frame XY delta.
-            const maxStep = this.config.maxSpeed * Math.max(deltaTime, 0);
-            const stepLen = Math.hypot(dx, dy);
-            if (stepLen > maxStep && stepLen > 0) {
-                const scale = maxStep / stepLen;
-                dx *= scale;
-                dy *= scale;
+                this.smoothedX += dx;
+                this.smoothedY += dy;
             }
 
-            this.smoothedX += dx;
-            this.smoothedY += dy;
+            camera.position.x = this.smoothedX;
+            camera.position.y = this.smoothedY;
         }
 
-        camera.position.set(this.smoothedX, this.smoothedY, this.config.cameraZ);
+        camera.position.z = this.config.cameraZ;
 
-        // Fixed world rotation for now: 180° about Y (local forward ≈ -world Z).
-        camera.rotation.set(0, 0, 0);
-        // camera.quaternion.copy(FLOOR_FOLLOW_QUAT);
+        // Look toward SetNow ring centre (world origin of current slice transform).
+        this.lookMatrix.lookAt(camera.position, this.circleCenterWorld, WORLD_UP);
+        this.targetQuat.setFromRotationMatrix(this.lookMatrix);
+
+        if (!this.rotationInitialized) {
+            camera.quaternion.copy(this.targetQuat);
+            this.rotationInitialized = true;
+        } else {
+            const rotHalf = this.config.lookRotationHalfLifeSeconds;
+            if (rotHalf <= 1e-6) {
+                camera.quaternion.copy(this.targetQuat);
+            } else {
+                const t = 1 - Math.exp((-Math.LN2 * Math.max(deltaTime, 0)) / rotHalf);
+                camera.quaternion.slerp(this.targetQuat, t);
+            }
+        }
     }
 }

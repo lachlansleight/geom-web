@@ -3,7 +3,7 @@ import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import GeomContainerEntity from "../GeomContainerEntity";
 import CameraOrbitEntity from "_realtime/camera/CameraOrbitEntity";
 import CameraFloorFollowEntity from "_realtime/camera/CameraFloorFollowEntity";
-import type { GeomPattern } from "./GeomPattern";
+import type { FloorFollowCameraDef, GeomPattern, OrbitCameraDef } from "./GeomPattern";
 import type { InterpolatorConfig } from "../animation/ParameterInterpolatorEntity";
 import patternsJson from "./patterns.json";
 
@@ -77,24 +77,27 @@ export default class GeomPatternManager extends RealtimeEntity {
         const mode = cam.mode ?? "orbit";
 
         if (mode === "floorFollow") {
+            const fc = cam as FloorFollowCameraDef;
             this.cameraOrbit.setEnabled(false);
             this.cameraFloorFollow.setEnabled(true);
             this.cameraFloorFollow.applyConfig({
-                verticalOffset: cam.verticalOffset,
-                halfLifeSeconds: cam.halfLifeSeconds ?? 0.5,
-                lookAtAhead: cam.lookAtAhead,
-                cameraZ: cam.cameraZ ?? 60,
-                maxSpeed: cam.maxSpeed ?? 60,
+                verticalOffset: fc.verticalOffset,
+                halfLifeSeconds: fc.halfLifeSeconds ?? 0.5,
+                lookAtAhead: fc.lookAtAhead,
+                cameraZ: fc.cameraZ ?? 60,
+                maxSpeed: fc.maxSpeed ?? 60,
+                lookRotationHalfLifeSeconds: fc.lookRotationHalfLifeSeconds ?? 0.35,
             });
         } else {
+            const oc = cam as OrbitCameraDef;
             this.cameraFloorFollow.setEnabled(false);
             this.cameraOrbit.setEnabled(true);
             this.cameraOrbit.applyConfig({
-                orbitCenter: new THREE.Vector3(...cam.orbitCenter),
-                lookAtAmount: cam.lookAtAmount,
-                radius: cam.radius,
-                theta: cam.theta,
-                phi: cam.phi,
+                orbitCenter: new THREE.Vector3(...oc.orbitCenter),
+                lookAtAmount: oc.lookAtAmount,
+                radius: oc.radius,
+                theta: oc.theta,
+                phi: oc.phi,
             });
         }
     }

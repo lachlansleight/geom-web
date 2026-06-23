@@ -54,6 +54,8 @@ export interface FloorFollowCameraDef {
     lookAtAhead: number;
     /** Maximum XY units per second the camera may move (anti-snap). Default 60. */
     maxSpeed?: number;
+    /** Half-life (s) for slerping camera rotation toward lookAt(ring centre). 0 = snap. Default 0.35. */
+    lookRotationHalfLifeSeconds?: number;
 }
 
 export type CameraDef = OrbitCameraDef | FloorFollowCameraDef;

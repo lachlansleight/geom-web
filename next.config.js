@@ -7,6 +7,11 @@ const nextConfig = {
             type: "asset/source",
         });
 
+        // node-canvas uses native bindings; do not bundle it for the server
+        if (isServer) {
+            config.externals.push({ canvas: "commonjs canvas" });
+        }
+
         return config;
     },
 };
