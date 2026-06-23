@@ -53,13 +53,13 @@ Output at time t:
 
 The system supports multiple shapes (though Sine is the primary one used):
 
-| Shape    | Behaviour                                       |
-|----------|-------------------------------------------------|
-| Sine     | Smooth oscillation (most common)                |
-| Triangle | Linear up then linear down                      |
+| Shape    | Behaviour                                           |
+| -------- | --------------------------------------------------- |
+| Sine     | Smooth oscillation (most common)                    |
+| Triangle | Linear up then linear down                          |
 | Sawtooth | Linear ramp, used for loopable params like rotation |
-| Square   | Snaps between -Amplitude and +Amplitude         |
-| Constant | No oscillation, just returns Center              |
+| Square   | Snaps between -Amplitude and +Amplitude             |
+| Constant | No oscillation, just returns Center                 |
 
 ### Lerping Between Oscillators
 
@@ -114,17 +114,19 @@ If this exceeds MaxChangePerSecond:
 ```
 
 Different waveform shapes have different derivative coefficients:
-- Sine: 2π
-- Triangle: 4
-- Sawtooth: 2
+
+-   Sine: 2π
+-   Triangle: 4
+-   Sawtooth: 2
 
 ### Freeze Chance
 
 On each shuffle, there's a chance (default 30%) the oscillator "freezes":
-- Shape set to Constant
-- Random center value picked
-- Amplitude set to 0
-- The parameter holds steady until the next shuffle
+
+-   Shape set to Constant
+-   Random center value picked
+-   Amplitude set to 0
+-   The parameter holds steady until the next shuffle
 
 This creates moments of stillness between movement — important for visual rhythm.
 
@@ -198,7 +200,7 @@ Second 30:  Output ≈ new-A's value (t≈0)
             → Reverse again
 ```
 
-The radius is always oscillating, but the *character* of its oscillation drifts over time.
+The radius is always oscillating, but the _character_ of its oscillation drifts over time.
 
 ## Parameter Configuration
 
@@ -206,38 +208,38 @@ Each GEOM parameter has specific ranges and behaviours that produce good visuals
 
 ### Parameters With Oscillators
 
-| Parameter   | Range        | MaxChange/s | Notes                          |
-|-------------|--------------|-------------|--------------------------------|
-| PositionX   | (-30, 30)    | 10          | Object horizontal movement     |
-| PositionY   | (-30, 30)    | 10          | Object vertical movement       |
-| RotationZ   | (0, 360)     | 720         | Twist. Uses sawtooth for continuous spin |
-| Scale       | varied       | varied      | Uniform scale                  |
-| Radius      | (0, 20)      | 1           | Ring radius. Slow changes look best |
-| CubeFill    | (0, 1)       | 1           | Cube width relative to spacing |
-| CubeHeight  | varied       | varied      | Cube depth/height              |
-| CubeSpin    | varied       | varied      | Per-cube rotation              |
-| Hue         | unconstrained| —           | Wraps 0-1, free to drift       |
+| Parameter  | Range         | MaxChange/s | Notes                                    |
+| ---------- | ------------- | ----------- | ---------------------------------------- |
+| PositionX  | (-30, 30)     | 10          | Object horizontal movement               |
+| PositionY  | (-30, 30)     | 10          | Object vertical movement                 |
+| RotationZ  | (0, 360)      | 720         | Twist. Uses sawtooth for continuous spin |
+| Scale      | varied        | varied      | Uniform scale                            |
+| Radius     | (0, 20)       | 1           | Ring radius. Slow changes look best      |
+| CubeFill   | (0, 1)        | 1           | Cube width relative to spacing           |
+| CubeHeight | varied        | varied      | Cube depth/height                        |
+| CubeSpin   | varied        | varied      | Per-cube rotation                        |
+| Hue        | unconstrained | —           | Wraps 0-1, free to drift                 |
 
 ### Parameters Without Oscillators (Static or Manual)
 
-| Parameter    | Default | Notes                         |
-|--------------|---------|-------------------------------|
-| Saturation   | 1.0     | Usually held constant         |
-| Brightness   | 1.0     | Usually held constant         |
-| Metallic     | 0.0     | Material property             |
-| Smoothness   | 0.2     | Material property             |
+| Parameter    | Default | Notes                           |
+| ------------ | ------- | ------------------------------- |
+| Saturation   | 1.0     | Usually held constant           |
+| Brightness   | 1.0     | Usually held constant           |
+| Metallic     | 0.0     | Material property               |
+| Smoothness   | 0.2     | Material property               |
 | RadiusCrunch | —       | Collapse effect, usually manual |
-| CubeCount    | —       | Usually fixed at init         |
+| CubeCount    | —       | Usually fixed at init           |
 
 ### Per-Second Offsets
 
 Some parameters also have a `PerSecond` value — a constant rate of change applied to all existing slices each frame. Most notable:
 
-| Parameter       | Typical PerSecond | Effect                              |
-|-----------------|-------------------|-------------------------------------|
-| Hue             | 0.1               | Rainbow shift along the tunnel      |
-| TranslationZ    | -5                | Slices move away from camera        |
-| RotationX/Y/Z   | 5-10              | Tunnel twists over time             |
+| Parameter     | Typical PerSecond | Effect                         |
+| ------------- | ----------------- | ------------------------------ |
+| Hue           | 0.1               | Rainbow shift along the tunnel |
+| TranslationZ  | -5                | Slices move away from camera   |
+| RotationX/Y/Z | 5-10              | Tunnel twists over time        |
 
 ## Global Shuffle Parameters
 
@@ -303,12 +305,14 @@ For the web implementation, we need:
 5. **Controller** — Ties interpolators to GeomEntity config, runs each frame
 
 We do NOT need to port:
-- Audio system (no audio input on web for now)
-- Unity MonoBehaviour/ScriptableObject patterns
-- The provider chain abstraction (overkill for web — direct connection is fine)
-- Offset system (simplify to just the base value)
+
+-   Audio system (no audio input on web for now)
+-   Unity MonoBehaviour/ScriptableObject patterns
+-   The provider chain abstraction (overkill for web — direct connection is fine)
+-   Offset system (simplify to just the base value)
 
 The core loop is simple:
+
 ```
 each frame:
   for each animated parameter:

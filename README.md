@@ -1,6 +1,6 @@
 # Geom on the Web
 
-Readme to come. 
+Readme to come.
 
 ## Overview: The Slice-Based Tunnel
 
@@ -74,6 +74,7 @@ Looking down the tunnel axis (Z), each slice contains a ring of cubes:
 ## Complete Rendering Example
 
 ```
+
     EXAMPLE: 8 CUBES, 4 SLICES, ROTATING SPIRAL
     ════════════════════════════════════════════
 
@@ -114,4 +115,7 @@ Looking down the tunnel axis (Z), each slice contains a ring of cubes:
     Each "ring" is one slice, twisted relative to the previous.
     Inner rings are older slices (smaller due to RadiusPerSecond < 0
     or just from perspective).
+
+```
+
 ```

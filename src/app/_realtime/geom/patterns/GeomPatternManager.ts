@@ -25,7 +25,7 @@ export default class GeomPatternManager extends RealtimeEntity {
     constructor(
         cameraOrbit: CameraOrbitEntity,
         cameraFloorFollow: CameraFloorFollowEntity,
-        geomContainer: GeomContainerEntity,
+        geomContainer: GeomContainerEntity
     ) {
         super();
         this.object3D.name = "GeomPatternManager";

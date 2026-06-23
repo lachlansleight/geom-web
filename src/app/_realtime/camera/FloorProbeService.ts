@@ -49,8 +49,7 @@ export default class FloorProbeService {
 
         this.probeBuffer = device.createBuffer({
             size: PROBE_BYTE_SIZE,
-            usage:
-                GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
         });
 
         this.stagingBuffer = device.createBuffer({
@@ -98,13 +97,7 @@ export default class FloorProbeService {
         if (this.stagingBusy) return; // skip frames where a readback is still in flight
 
         const encoder = this.device.createCommandEncoder();
-        encoder.copyBufferToBuffer(
-            this.probeBuffer,
-            0,
-            this.stagingBuffer,
-            0,
-            PROBE_BYTE_SIZE
-        );
+        encoder.copyBufferToBuffer(this.probeBuffer, 0, this.stagingBuffer, 0, PROBE_BYTE_SIZE);
         this.device.queue.submit([encoder.finish()]);
 
         this.stagingBusy = true;
@@ -137,6 +130,7 @@ export default class FloorProbeService {
     }
 
     private buildPipeline(): void {
+        // eslint-disable-next-line @next/next/no-assign-module-variable
         const module = this.device.createShaderModule({ code: floorProbeShader });
         this.pipeline = this.device.createComputePipeline({
             layout: "auto",

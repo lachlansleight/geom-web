@@ -1,13 +1,13 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(npm install:*)",
-      "Bash(ls:*)",
-      "Bash(find *)",
-      "Bash(grep *)",
-      "Bash(npx tsc:*)",
-      "Bash(npx next:*)",
-      "Bash(npm run *)"
-    ]
-  }
+    "permissions": {
+        "allow": [
+            "Bash(npm install:*)",
+            "Bash(ls:*)",
+            "Bash(find *)",
+            "Bash(grep *)",
+            "Bash(npx tsc:*)",
+            "Bash(npx next:*)",
+            "Bash(npm run *)"
+        ]
+    }
 }

@@ -12,24 +12,24 @@ Cube count: 24 GeomEntity.ts:184:21
 Slice buffer size: 19200 bytes GeomEntity.ts:185:21
 Vertex buffer size: 11059200 bytes GeomEntity.ts:186:21
 Presentation format: bgra8unorm GeomEntity.ts:187:21
-Pipelines created: 
+Pipelines created:
 Object { setNow: true, transformPerSecond: true, offsetPerSecond: true, vertexGen: true, render: true }
 GeomEntity.ts:188:21
-Bind groups created: 
+Bind groups created:
 Object { setNow: true, transformPerSecond: true, offsetPerSecond: true, vertexGen: true, render: true }
 GeomEntity.ts:195:21
 GeomEntity initialized successfully Renderer.tsx:163:25
 === RENDER STATE DEBUG === GeomEntity.ts:901:17
-Camera position: 
+Camera position:
 Object { x: 0, y: 0, z: 2 }
 GeomEntity.ts:902:17
-Camera rotation: 
+Camera rotation:
 Object { isEuler: true, _x: 0, _y: 0, _z: 0, _order: "XYZ", _onChangeCallback: onRotationChange() }
 GeomEntity.ts:903:17
 Canvas size: 1659 x 730 GeomEntity.ts:904:17
 Current slice: 59 GeomEntity.ts:905:17
 Total vertices to draw: 230400 GeomEntity.ts:906:17
-Config: 
+Config:
 Object { sliceCount: 150, cubeCount: 24, radius: 2, hue: 0 }
 ```
 
@@ -38,7 +38,7 @@ But then, on repeat:
 1. All the slices debug, with the following being an expansion of one:
 
 ```
-Slice 4: 
+Slice 4:
     Object
         cubeCount: 0
         cubeSize: Array(3) [ 0, 0, 0 ]
@@ -60,6 +60,7 @@ Slice 4:
 2. The render state debug runs again
 
 3. When suddenly an error:
+
 ```
 DOMException: Buffer mapping is already pending
     debugReadbackVertexBuffer webpack-internal:///(app-pages-browser)/./src/app/_realtime/geom/GeomEntity.ts:758
@@ -70,6 +71,7 @@ DOMException: Buffer mapping is already pending
 ```
 
 4. And a warning:
+
 ```
 Uncaptured WebGPU error: Usage flags BufferUsages(COPY_DST | STORAGE) of Buffer with '' label do not contain required usage flags BufferUsages(COPY_SRC)
 ```

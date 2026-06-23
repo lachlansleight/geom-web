@@ -175,7 +175,7 @@ export default class AudioCapture {
             }
 
             // We don't need the video track
-            this.stream.getVideoTracks().forEach((t) => t.stop());
+            this.stream.getVideoTracks().forEach(t => t.stop());
 
             this.audioCtx = new AudioContext();
             this.source = this.audioCtx.createMediaStreamSource(this.stream);
@@ -239,9 +239,21 @@ export default class AudioCapture {
         this.maxThirtySecond.update(this.momentary);
 
         // Update meta variables
-        this.flicker = AudioCapture.getWithinLimits(this.momentary, this.minFiveSecond.value, this.maxFiveSecond.value);
-        this.pulse = AudioCapture.getWithinLimits(this.halfSecond, this.minFiveSecond.value, this.maxFiveSecond.value);
-        this.vibe = AudioCapture.getWithinLimits(this.fiveSecond, this.minThirtySecond.value, this.maxThirtySecond.value);
+        this.flicker = AudioCapture.getWithinLimits(
+            this.momentary,
+            this.minFiveSecond.value,
+            this.maxFiveSecond.value
+        );
+        this.pulse = AudioCapture.getWithinLimits(
+            this.halfSecond,
+            this.minFiveSecond.value,
+            this.maxFiveSecond.value
+        );
+        this.vibe = AudioCapture.getWithinLimits(
+            this.fiveSecond,
+            this.minThirtySecond.value,
+            this.maxThirtySecond.value
+        );
 
         this.rafId = requestAnimationFrame(this.pump);
     };
@@ -252,7 +264,11 @@ export default class AudioCapture {
         return peakValue / (total + 0.00001);
     }
 
-    private static getWithinLimits(currentValue: number, minValue: number, maxValue: number): number {
+    private static getWithinLimits(
+        currentValue: number,
+        minValue: number,
+        maxValue: number
+    ): number {
         return Math.max(0, Math.min(1, (currentValue - minValue) / (maxValue - minValue)));
     }
 
@@ -276,7 +292,7 @@ export default class AudioCapture {
 
     private cleanupStream(): void {
         if (this.stream) {
-            this.stream.getTracks().forEach((t) => t.stop());
+            this.stream.getTracks().forEach(t => t.stop());
             this.stream = null;
         }
     }

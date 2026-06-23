@@ -255,7 +255,11 @@ export default class GeomEntity extends RealtimeEntity {
             console.log("Slice count:", this.config.sliceCount);
             console.log("Cube count:", this.config.cubeCount);
             console.log("Slice buffer size:", this.config.sliceCount * SLICE_STRUCT_SIZE, "bytes");
-            console.log("Vertex buffer size:", this.config.sliceCount * 64 * 24 * VERTEX_STRUCT_SIZE, "bytes");
+            console.log(
+                "Vertex buffer size:",
+                this.config.sliceCount * 64 * 24 * VERTEX_STRUCT_SIZE,
+                "bytes"
+            );
             console.log("Presentation format:", this.presentationFormat);
             console.log("Pipelines created:", {
                 setNow: !!this.setNowPipeline,
@@ -317,7 +321,8 @@ export default class GeomEntity extends RealtimeEntity {
         const handleResize = () => {
             if (this.canvas && this.context && this.device) {
                 const newWidth = window.innerWidth || document.documentElement.clientWidth || 800;
-                const newHeight = window.innerHeight || document.documentElement.clientHeight || 600;
+                const newHeight =
+                    window.innerHeight || document.documentElement.clientHeight || 600;
                 if (newWidth > 0 && newHeight > 0) {
                     this.canvas.width = newWidth;
                     this.canvas.height = newHeight;
@@ -579,11 +584,7 @@ export default class GeomEntity extends RealtimeEntity {
         }
 
         // ParticleForce bind group
-        if (
-            this.particleForcePipeline &&
-            this.particleForceUniformBuffer &&
-            this.particleBuffer
-        ) {
+        if (this.particleForcePipeline && this.particleForceUniformBuffer && this.particleBuffer) {
             this.particleForceBindGroup = this.device.createBindGroup({
                 layout: this.particleForcePipeline.getBindGroupLayout(0),
                 entries: [
@@ -1067,7 +1068,13 @@ export default class GeomEntity extends RealtimeEntity {
         const commandEncoder = this.device.createCommandEncoder();
         // Copy the entire slice buffer for debugging
         const readSize = this.config.sliceCount * SLICE_STRUCT_SIZE;
-        commandEncoder.copyBufferToBuffer(this.sliceBuffer, 0, this.debugStagingBuffer, 0, readSize);
+        commandEncoder.copyBufferToBuffer(
+            this.sliceBuffer,
+            0,
+            this.debugStagingBuffer,
+            0,
+            readSize
+        );
         this.device.queue.submit([commandEncoder.finish()]);
 
         await this.debugStagingBuffer.mapAsync(GPUMapMode.READ, 0, readSize);
@@ -1079,10 +1086,16 @@ export default class GeomEntity extends RealtimeEntity {
 
         // Check slices around the current slice (where the gap might be)
         const checkSlices = [
-            0, 1, 2,  // Start of buffer
-            this.currentSlice - 2, this.currentSlice - 1, this.currentSlice,  // Around current
-            this.currentSlice + 1, this.currentSlice + 2,  // After current (oldest)
-            this.config.sliceCount - 2, this.config.sliceCount - 1,  // End of buffer
+            0,
+            1,
+            2, // Start of buffer
+            this.currentSlice - 2,
+            this.currentSlice - 1,
+            this.currentSlice, // Around current
+            this.currentSlice + 1,
+            this.currentSlice + 2, // After current (oldest)
+            this.config.sliceCount - 2,
+            this.config.sliceCount - 1, // End of buffer
         ].filter(i => i >= 0 && i < this.config.sliceCount);
 
         for (const i of checkSlices) {
@@ -1112,14 +1125,15 @@ export default class GeomEntity extends RealtimeEntity {
 
         // Check vertices from different slices to find where the gap is
         const slicesToCheck = [
-            0, 1,  // Start
-            Math.floor(this.config.sliceCount * 0.25),  // 25%
-            Math.floor(this.config.sliceCount * 0.5),   // 50%
-            Math.floor(this.config.sliceCount * 0.75),  // 75%
+            0,
+            1, // Start
+            Math.floor(this.config.sliceCount * 0.25), // 25%
+            Math.floor(this.config.sliceCount * 0.5), // 50%
+            Math.floor(this.config.sliceCount * 0.75), // 75%
             this.currentSlice > 0 ? this.currentSlice - 1 : 0,
             this.currentSlice,
             (this.currentSlice + 1) % this.config.sliceCount,
-            this.config.sliceCount - 1,  // End
+            this.config.sliceCount - 1, // End
         ];
 
         console.log("=== VERTEX BUFFER DEBUG (checking multiple slices) ===");
@@ -1134,23 +1148,36 @@ export default class GeomEntity extends RealtimeEntity {
             const readSize = VERTEX_STRUCT_SIZE * 6; // Read first 6 vertices of this slice
 
             const commandEncoder = this.device.createCommandEncoder();
-            commandEncoder.copyBufferToBuffer(this.vertexBuffer, byteOffset, this.debugStagingBuffer, 0, readSize);
+            commandEncoder.copyBufferToBuffer(
+                this.vertexBuffer,
+                byteOffset,
+                this.debugStagingBuffer,
+                0,
+                readSize
+            );
             this.device.queue.submit([commandEncoder.finish()]);
 
             await this.debugStagingBuffer.mapAsync(GPUMapMode.READ, 0, readSize);
-            const data = new Float32Array(this.debugStagingBuffer.getMappedRange(0, readSize).slice(0));
+            const data = new Float32Array(
+                this.debugStagingBuffer.getMappedRange(0, readSize).slice(0)
+            );
             this.debugStagingBuffer.unmap();
 
             const pos = [data[0], data[1], data[2]];
-            const isZero = Math.abs(pos[0]) < 0.001 && Math.abs(pos[1]) < 0.001 && Math.abs(pos[2]) < 0.001;
+            const isZero =
+                Math.abs(pos[0]) < 0.001 && Math.abs(pos[1]) < 0.001 && Math.abs(pos[2]) < 0.001;
 
             if (isZero) zeroSlices++;
             else validSlices++;
 
-            console.log(`Slice ${sliceId}: pos=[${pos.map(v => v.toFixed(2)).join(', ')}] ${isZero ? '⚠️ ZERO' : '✓'}`);
+            console.log(
+                `Slice ${sliceId}: pos=[${pos.map(v => v.toFixed(2)).join(", ")}] ${isZero ? "⚠️ ZERO" : "✓"}`
+            );
         }
 
-        console.log(`Summary: ${validSlices} valid, ${zeroSlices} zero positions out of ${slicesToCheck.length} checked`);
+        console.log(
+            `Summary: ${validSlices} valid, ${zeroSlices} zero positions out of ${slicesToCheck.length} checked`
+        );
 
         // Also check transform matrices for the zero slices
         console.log("=== CHECKING TRANSFORMS FOR PROBLEM SLICES ===");
@@ -1158,11 +1185,20 @@ export default class GeomEntity extends RealtimeEntity {
         if (sliceData) {
             for (const sliceId of slicesToCheck) {
                 const offset = sliceId * (SLICE_STRUCT_SIZE / 4);
-                const transformDiag = [sliceData[offset + 0], sliceData[offset + 5], sliceData[offset + 10], sliceData[offset + 15]];
-                const isIdentityish = transformDiag.every(v => Math.abs(v - 1) < 0.0001 || Math.abs(v) < 0.0001);
+                const transformDiag = [
+                    sliceData[offset + 0],
+                    sliceData[offset + 5],
+                    sliceData[offset + 10],
+                    sliceData[offset + 15],
+                ];
+                const isIdentityish = transformDiag.every(
+                    v => Math.abs(v - 1) < 0.0001 || Math.abs(v) < 0.0001
+                );
                 const hasNaN = transformDiag.some(v => isNaN(v));
                 const hasInf = transformDiag.some(v => !isFinite(v));
-                console.log(`Slice ${sliceId} transform diag: [${transformDiag.map(v => v.toFixed(3)).join(', ')}] ${hasNaN ? '⚠️ NaN!' : ''} ${hasInf ? '⚠️ Inf!' : ''}`);
+                console.log(
+                    `Slice ${sliceId} transform diag: [${transformDiag.map(v => v.toFixed(3)).join(", ")}] ${hasNaN ? "⚠️ NaN!" : ""} ${hasInf ? "⚠️ Inf!" : ""}`
+                );
             }
         }
     }
@@ -1172,7 +1208,13 @@ export default class GeomEntity extends RealtimeEntity {
 
         const readSize = this.config.sliceCount * SLICE_STRUCT_SIZE;
         const commandEncoder = this.device.createCommandEncoder();
-        commandEncoder.copyBufferToBuffer(this.sliceBuffer, 0, this.debugStagingBuffer, 0, readSize);
+        commandEncoder.copyBufferToBuffer(
+            this.sliceBuffer,
+            0,
+            this.debugStagingBuffer,
+            0,
+            readSize
+        );
         this.device.queue.submit([commandEncoder.finish()]);
 
         await this.debugStagingBuffer.mapAsync(GPUMapMode.READ, 0, readSize);

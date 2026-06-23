@@ -5,7 +5,7 @@ import OscillatorShuffler, { ShufflerConfig } from "./OscillatorShuffler";
 export interface InterpolatorConfig {
     /** Human-readable name for this parameter */
     name: string;
-    
+
     interpolationPeriodMin: number;
     /** Maximum time (seconds) during which to lerp from one oscillator state to the other */
     interpolationPeriodMax: number;
@@ -106,19 +106,29 @@ export default class ParameterInterpolatorEntity extends RealtimeEntity {
             this.shuffler.shuffle(this.oscillatorFrom.params);
             this.oscillatorFrom.resetTime();
             this.randomiseInterpolationTime();
-            console.log(`Shuffled ${this.interpolatorConfig.name} FROM (at t=1)`, this.oscillatorFrom.params);
+            console.log(
+                `Shuffled ${this.interpolatorConfig.name} FROM (at t=1)`,
+                this.oscillatorFrom.params
+            );
             this._directionUp = false;
         } else if (this._t <= 0 && !this._directionUp) {
             this.shuffler.shuffle(this.oscillatorTo.params);
             this.oscillatorTo.resetTime();
             this.randomiseInterpolationTime();
-            console.log(`Shuffled ${this.interpolatorConfig.name} TO (at t=0)`, this.oscillatorTo.params);
+            console.log(
+                `Shuffled ${this.interpolatorConfig.name} TO (at t=0)`,
+                this.oscillatorTo.params
+            );
             this._directionUp = true;
         }
     }
 
     randomiseInterpolationTime(): void {
-        this._interpolationTime = Math.random() * (this.interpolatorConfig.interpolationPeriodMax - this.interpolatorConfig.interpolationPeriodMin) + this.interpolatorConfig.interpolationPeriodMin;
+        this._interpolationTime =
+            Math.random() *
+                (this.interpolatorConfig.interpolationPeriodMax -
+                    this.interpolatorConfig.interpolationPeriodMin) +
+            this.interpolatorConfig.interpolationPeriodMin;
     }
 
     /** Update shuffler config at runtime (e.g. when switching patterns).

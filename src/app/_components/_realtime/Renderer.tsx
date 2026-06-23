@@ -187,7 +187,11 @@ const Renderer = (): JSX.Element => {
                 const pm = new GeomPatternManager(cameraOrbit, cameraFloorFollow, geomEntity);
                 pm.init();
                 patternManager.current = pm;
-                showPatternOverlay(pm.patterns[pm.currentIndex].name, pm.currentIndex, pm.patterns.length);
+                showPatternOverlay(
+                    pm.patterns[pm.currentIndex].name,
+                    pm.currentIndex,
+                    pm.patterns.length
+                );
             })
             .catch(err => {
                 console.error("Failed to initialize GeomEntity:", err);
@@ -207,10 +211,18 @@ const Renderer = (): JSX.Element => {
                 const pm = patternManager.current;
                 if (e.key === "ArrowRight") {
                     pm.nextPattern();
-                    showPatternOverlay(pm.patterns[pm.currentIndex].name, pm.currentIndex, pm.patterns.length);
+                    showPatternOverlay(
+                        pm.patterns[pm.currentIndex].name,
+                        pm.currentIndex,
+                        pm.patterns.length
+                    );
                 } else if (e.key === "ArrowLeft") {
                     pm.previousPattern();
-                    showPatternOverlay(pm.patterns[pm.currentIndex].name, pm.currentIndex, pm.patterns.length);
+                    showPatternOverlay(
+                        pm.patterns[pm.currentIndex].name,
+                        pm.currentIndex,
+                        pm.patterns.length
+                    );
                 }
             }
         },
@@ -229,7 +241,11 @@ const Renderer = (): JSX.Element => {
             tunnelPolylineDebugRef.current?.update(geomContainerRef.current);
 
             const persp = GlobalApp.instance.perspCam;
-            console.log(persp.position.x.toFixed(3), persp.position.y.toFixed(3), persp.position.z.toFixed(3));
+            console.log(
+                persp.position.x.toFixed(3),
+                persp.position.y.toFixed(3),
+                persp.position.z.toFixed(3)
+            );
 
             // Render scene
             GlobalApp.instance.renderer.render(

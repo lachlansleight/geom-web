@@ -117,16 +117,16 @@ export default class CameraOrbitEntity extends RealtimeEntity {
         const z = Math.cos(theta);
 
         const center = this.config.orbitCenter;
-        camera.position.set(
-            center.x + radius * x,
-            center.y + radius * y,
-            center.z + radius * z,
-        );
+        camera.position.set(center.x + radius * x, center.y + radius * y, center.z + radius * z);
 
         // LookAt with blend
         if (this.config.lookAtAmount > 0) {
             const lookTarget = new THREE.Quaternion();
-            const lookMatrix = new THREE.Matrix4().lookAt(camera.position, center, new THREE.Vector3(0, 1, 0));
+            const lookMatrix = new THREE.Matrix4().lookAt(
+                camera.position,
+                center,
+                new THREE.Vector3(0, 1, 0)
+            );
             lookTarget.setFromRotationMatrix(lookMatrix);
 
             camera.quaternion.slerp(lookTarget, this.config.lookAtAmount);

@@ -110,6 +110,7 @@ export default class TunnelPolylineService {
     }
 
     private buildPipeline(): void {
+        // eslint-disable-next-line @next/next/no-assign-module-variable
         const module = this.device.createShaderModule({ code: tunnelPolylineSamplerShader });
         this.pipeline = this.device.createComputePipeline({
             layout: "auto",

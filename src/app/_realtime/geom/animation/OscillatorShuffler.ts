@@ -47,7 +47,7 @@ export default class OscillatorShuffler {
         // Chance to freeze (hold constant)
         if (Math.random() < freezeChance || this.config.muted) {
             target.shape = OscillatorShape.Constant;
-            if(this.config.muted) {
+            if (this.config.muted) {
                 target.center = (absoluteMin + absoluteMax) / 2;
             } else {
                 target.center = randomRange(absoluteMin, absoluteMax);

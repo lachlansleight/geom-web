@@ -145,15 +145,15 @@ export default class GeomContainerEntity extends RealtimeEntity {
 
         this.geomEntity.object3D.position.z = 0;
 
-        if(AudioCapture.instance.active) {
-            if(this._primedForHueOffset) {
+        if (AudioCapture.instance.active) {
+            if (this._primedForHueOffset) {
                 this._hueOffset += Math.random();
                 this._primedForHueOffset = false;
                 this._silenceDuration = 0;
             } else {
-                if(AudioCapture.instance.momentary < this._silenceThreshold) {
+                if (AudioCapture.instance.momentary < this._silenceThreshold) {
                     this._silenceDuration += deltaTime;
-                    if(this._silenceDuration > this._silenceDurationRequirement) {
+                    if (this._silenceDuration > this._silenceDurationRequirement) {
                         this._primedForHueOffset = true;
                     }
                 } else {
@@ -161,8 +161,13 @@ export default class GeomContainerEntity extends RealtimeEntity {
                 }
             }
 
-            this.config.brightness = THREE.MathUtils.clamp((AudioCapture.instance.flicker - 0.1) / 0.9, 0, 1);
-            this.config.hue = (AudioCapture.instance.pulse * 0.3 + 0.45) + AudioCapture.instance.flicker * 0.1;
+            this.config.brightness = THREE.MathUtils.clamp(
+                (AudioCapture.instance.flicker - 0.1) / 0.9,
+                0,
+                1
+            );
+            this.config.hue =
+                AudioCapture.instance.pulse * 0.3 + 0.45 + AudioCapture.instance.flicker * 0.1;
             this.config.hue += this._hueOffset;
         }
 

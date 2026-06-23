@@ -41,20 +41,37 @@ const Header = (): JSX.Element => {
             </Link>
             <div className="flex items-center justify-end gap-2">
                 {audioLevel.map((level, index) => (
-                    <div key={index} className="w-[50px] h-4 bg-neutral-900 rounded-full grid place-items-center relative">
-                        <div className="absolute top-0 left-0 h-full bg-neutral-700 rounded-full" style={{ width: `${level * 100}%` }}></div>
-                        <span className="text-xs text-yellow-300 font-bold absolute left-0 top-0 w-full h-full text-left px-1" style={{ opacity: level * 0.5 + 0.1 }}>
-                            {index === 0 
-                                ? "!" : index === 1 
-                                ? "½" : index === 2 
-                                ? "1" : index === 3 
-                                ? "5" : index === 4 
-                                ? "10" : index === 5 
-                                ? "30" : index === 6 
-                                ? "⚡" : index === 7 
-                                ? "🟡" : index === 8 
-                                ? "💛" : ""
-                            }
+                    <div
+                        key={index}
+                        className="w-[50px] h-4 bg-neutral-900 rounded-full grid place-items-center relative"
+                    >
+                        <div
+                            className="absolute top-0 left-0 h-full bg-neutral-700 rounded-full"
+                            style={{ width: `${level * 100}%` }}
+                        ></div>
+                        <span
+                            className="text-xs text-yellow-300 font-bold absolute left-0 top-0 w-full h-full text-left px-1"
+                            style={{ opacity: level * 0.5 + 0.1 }}
+                        >
+                            {index === 0
+                                ? "!"
+                                : index === 1
+                                  ? "½"
+                                  : index === 2
+                                    ? "1"
+                                    : index === 3
+                                      ? "5"
+                                      : index === 4
+                                        ? "10"
+                                        : index === 5
+                                          ? "30"
+                                          : index === 6
+                                            ? "⚡"
+                                            : index === 7
+                                              ? "🟡"
+                                              : index === 8
+                                                ? "💛"
+                                                : ""}
                         </span>
                         {/* <span className="text-xs text-neutral-100 font-bold absolute left-0 top-0 w-full h-full text-center" style={{ opacity: level * 0.5 + 0.1 }}>{level.toFixed(2)}</span> */}
                     </div>

@@ -207,7 +207,10 @@ export default class GeomParameterAnimator extends RealtimeEntity {
             const merged: InterpolatorConfig = {
                 ...interpolator.interpolatorConfig,
                 ...partialConfig,
-                shuffler: { ...interpolator.interpolatorConfig.shuffler, ...partialConfig.shuffler },
+                shuffler: {
+                    ...interpolator.interpolatorConfig.shuffler,
+                    ...partialConfig.shuffler,
+                },
             };
             interpolator.updateConfig(merged);
         }

@@ -35,15 +35,17 @@ src/app/_realtime/geom/
 A high-level wrapper that controls `GeomEntity` with Perlin noise-based animation. This is the class instantiated in `Renderer.tsx`.
 
 **Key responsibilities:**
-- Creates and manages a `GeomEntity` instance
-- Animates parameters over time using Perlin noise:
-  - `radius`: varies between ~0.5 and 6.5
-  - `cubeFill`: varies between ~0.3 and 0.9
-  - Position: moves across screen based on noise
-  - Rotation: continuous rotation over time
-- Passes updated config to `GeomEntity` each frame
+
+-   Creates and manages a `GeomEntity` instance
+-   Animates parameters over time using Perlin noise:
+    -   `radius`: varies between ~0.5 and 6.5
+    -   `cubeFill`: varies between ~0.3 and 0.9
+    -   Position: moves across screen based on noise
+    -   Rotation: continuous rotation over time
+-   Passes updated config to `GeomEntity` each frame
 
 **Usage:**
+
 ```typescript
 const geomContainer = new GeomContainerEntity({
     sliceCount: 1000,
@@ -59,25 +61,29 @@ await geomContainer.init();
 The core WebGPU class that extends `RealtimeEntity` and orchestrates the rendering pipeline.
 
 **Key responsibilities:**
-- WebGPU device and context initialization
-- Buffer creation (slice buffer, vertex buffer, uniform buffers)
-- Compute pipeline creation and dispatch
-- Render pipeline with overlay canvas
-- Debug readback system for diagnostics
+
+-   WebGPU device and context initialization
+-   Buffer creation (slice buffer, vertex buffer, uniform buffers)
+-   Compute pipeline creation and dispatch
+-   Render pipeline with overlay canvas
+-   Debug readback system for diagnostics
 
 **Important methods:**
-- `init()` - Async initialization of all WebGPU resources
-- `update(time, deltaTime)` - Called every frame, dispatches compute shaders and renders
-- `createCanvas()` - Creates overlay canvas for WebGPU rendering (separate from Three.js)
-- `dispatchCompute()` - Runs all compute shader passes in sequence
-- `render()` - Renders the geometry using vertex pulling
+
+-   `init()` - Async initialization of all WebGPU resources
+-   `update(time, deltaTime)` - Called every frame, dispatches compute shaders and renders
+-   `createCanvas()` - Creates overlay canvas for WebGPU rendering (separate from Three.js)
+-   `dispatchCompute()` - Runs all compute shader passes in sequence
+-   `render()` - Renders the geometry using vertex pulling
 
 **Key state variables:**
-- `sliceInterval: 2` - Slices advance every N frames (default: 2)
-- `holdRadiusAtZero: true` - First slice has radius 0 (prevents pop-in)
-- `currentSlice` wraps at `sliceCount * 0.75` - Uses 75% of buffer capacity
+
+-   `sliceInterval: 2` - Slices advance every N frames (default: 2)
+-   `holdRadiusAtZero: true` - First slice has radius 0 (prevents pop-in)
+-   `currentSlice` wraps at `sliceCount * 0.75` - Uses 75% of buffer capacity
 
 **Configuration (`GeomConfig`):**
+
 ```typescript
 interface GeomConfig {
     sliceCount: number;      // Number of slices in circular buffer (e.g., 1000)
@@ -103,18 +109,19 @@ interface GeomConfig {
 
 Each frame runs 4 compute passes in sequence:
 
-| Pass | Shader | Workgroups | Purpose |
-|------|--------|------------|---------|
-| 1 | `sliceSetNow` | 1 | Set current slice to current transform/parameters |
-| 2 | `sliceTransformPerSecond` | ceil(sliceCount/256) | Apply transform delta to all other slices |
-| 3 | `sliceOffsetPerSecond` | ceil(sliceCount/256) | Animate slice parameters (color, size, spin) |
-| 4 | `vertexGeneration` | sliceCount | Generate triangle geometry from slices |
+| Pass | Shader                    | Workgroups           | Purpose                                           |
+| ---- | ------------------------- | -------------------- | ------------------------------------------------- |
+| 1    | `sliceSetNow`             | 1                    | Set current slice to current transform/parameters |
+| 2    | `sliceTransformPerSecond` | ceil(sliceCount/256) | Apply transform delta to all other slices         |
+| 3    | `sliceOffsetPerSecond`    | ceil(sliceCount/256) | Animate slice parameters (color, size, spin)      |
+| 4    | `vertexGeneration`        | sliceCount           | Generate triangle geometry from slices            |
 
 **Slice advancement:** Controlled by `sliceInterval` (default: 2). The current slice only advances every N frames, meaning slices are written at half frame rate by default. The `currentSlice` counter wraps at 75% of `sliceCount` to avoid visual artifacts from buffer wraparound.
 
 ### GPU Buffer Layout
 
 **Slice Buffer** (`CubeTunnelSlice`, 128 bytes per slice):
+
 ```
 offset 0-63:   transform mat4x4       (64 bytes)
 offset 64-79:  ringRadiusAndColor     vec4 (xyz=HSV color, w=radius)
@@ -124,6 +131,7 @@ offset 112-127: params                vec4 (x=cubeCount, y=exists, z=setTime, w=
 ```
 
 **Vertex Buffer** (`GeomVertex`, 48 bytes per vertex):
+
 ```
 offset 0-11:  position  vec3
 offset 12-23: normal    vec3
@@ -133,20 +141,23 @@ offset 44-47: padding   f32
 ```
 
 **Vertex count calculation:**
-- Up to 64 cubes per slice
-- 4 faces per cube (no caps - they connect to adjacent slices)
-- 6 vertices per face (2 triangles)
-- Total: `sliceCount * 64 * 24` vertices
+
+-   Up to 64 cubes per slice
+-   4 faces per cube (no caps - they connect to adjacent slices)
+-   6 vertices per face (2 triangles)
+-   Total: `sliceCount * 64 * 24` vertices
 
 ## Notable Techniques
 
 ### WGSL Struct Alignment
 
 WGSL has strict alignment rules for uniform/storage buffers:
-- `vec3<f32>` has **16-byte alignment** (not 12!)
-- This causes implicit padding that breaks naive struct layouts
+
+-   `vec3<f32>` has **16-byte alignment** (not 12!)
+-   This causes implicit padding that breaks naive struct layouts
 
 **Solution:** Use `vec4` everywhere and pack multiple values:
+
 ```wgsl
 // BAD - alignment issues
 struct Bad {
@@ -163,15 +174,17 @@ struct Good {
 ### Overlay Canvas Approach
 
 WebGPU renders to a separate canvas overlaid on the Three.js WebGL canvas:
-- Position: fixed, full-screen, pointer-events: none
-- Z-index above Three.js canvas
-- Alpha blending with premultiplied alpha mode
+
+-   Position: fixed, full-screen, pointer-events: none
+-   Z-index above Three.js canvas
+-   Alpha blending with premultiplied alpha mode
 
 This avoids conflicts between WebGL and WebGPU contexts.
 
 ### Vertex Pulling
 
 Instead of traditional vertex buffers, we use **vertex pulling** from a storage buffer:
+
 ```wgsl
 @vertex
 fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
@@ -185,6 +198,7 @@ This allows compute shaders to write directly to the same buffer that rendering 
 ### Debug Readback System
 
 For debugging without visual confirmation, the system includes buffer readback:
+
 ```typescript
 private async debugReadbackSliceBuffer(): Promise<void> {
     // Copy GPU buffer to staging buffer
@@ -208,6 +222,7 @@ Both `GeomContainerEntity` and `GeomEntity` extend `RealtimeEntity` but don't ad
 4. `GeomContainerEntity.update()` applies noise-based animation but doesn't call `GeomEntity.update()` - that's handled directly by the render loop iterating over `GlobalApp.instance.entities`
 
 **Camera matrix usage:**
+
 ```typescript
 const camera = GlobalApp.instance?.perspCam;
 camera.updateMatrixWorld();
@@ -219,6 +234,7 @@ const viewProjMatrix = new THREE.Matrix4().multiplyMatrices(projMatrix, viewMatr
 ## Configuration in Renderer.tsx
 
 The `GeomContainerEntity` is instantiated in `Renderer.tsx`:
+
 ```typescript
 const geomEntity = new GeomContainerEntity({
     sliceCount: 1000,
@@ -261,18 +277,22 @@ Note: `GeomContainerEntity` will override `radius` and `cubeFill` with noise-bas
 ## Troubleshooting
 
 **All slices show zeros:**
-- Check uniform buffer alignment matches WGSL struct layout
-- Verify compute shader dispatch is happening
-- Check bind group creation succeeded
+
+-   Check uniform buffer alignment matches WGSL struct layout
+-   Verify compute shader dispatch is happening
+-   Check bind group creation succeeded
 
 **Vertices all zero but slices valid:**
-- Vertex generation shader issue
-- Check `exists` flag is being set to 1.0
+
+-   Vertex generation shader issue
+-   Check `exists` flag is being set to 1.0
 
 **Nothing renders but data looks correct:**
-- Check camera matrices are valid
-- Verify depth texture is being created
-- Check render pipeline blend/depth settings
+
+-   Check camera matrices are valid
+-   Verify depth texture is being created
+-   Check render pipeline blend/depth settings
 
 **"Buffer mapping already pending" error:**
-- Debug readback calls overlapping - use the `debugReadbackPending` flag
+
+-   Debug readback calls overlapping - use the `debugReadbackPending` flag
