@@ -550,5 +550,148 @@
                 }
             }
         }
+    },
+    {
+        "name": "Reverse Dissolve",
+        "camera": {
+            "orbitCenter": [0, 0, 50],
+            "lookAtAmount": 1.0,
+            "radius": { "center": 14, "amplitude": 5, "period": 30, "phase": 0 },
+            "theta": { "center": 0, "amplitude": 25, "period": 40, "phase": 0.25 },
+            "phi": { "center": 0, "amplitude": 20, "period": 35, "phase": 0.5 }
+        },
+        "geom": {
+            "sliceCount": 1000,
+            "cubeCount": 64,
+            "saturation": 1.0,
+            "brightness": 1.0,
+            "translationPerSecond": [0, 0, -10],
+            "rotationPerSecond": [0, 0, 0],
+            "huePerSecond": 0.0,
+            "metallic": 0.0,
+            "smoothness": 0.5,
+            "opacity": 1.0,
+            "dissolveMin": 1.0,
+            "dissolveMax": 3.0,
+            "noiseScale": 12,
+            "noiseStrength": 0.5,
+            "dissolveForwardBias": 0.9,
+            "particleRampTime": 1.0,
+            "particleForceStrength": 3,
+            "particleNoiseScale": 0.5,
+            "particleNoiseTimeScale": 0.3,
+            "particleDamping": 0.0,
+            "noiseBrightnessStartAge": 3.0,
+            "noiseBrightnessFadeAge": 5.0,
+            "noiseBrightnessMinFactor": 0.2
+        },
+        "animators": {
+            "radius": {
+                "interpolationPeriodMin": 5,
+                "interpolationPeriodMax": 20,
+                "shuffler": {
+                    "muted": false,
+                    "absoluteMin": 2,
+                    "absoluteMax": 20,
+                    "maxChangePerSecond": 2,
+                    "minFrequency": 0.02,
+                    "maxFrequency": 0.3,
+                    "freezeChance": 0.2
+                }
+            },
+            "cubeFill": {
+                "interpolationPeriodMin": 5,
+                "interpolationPeriodMax": 15,
+                "shuffler": {
+                    "muted": false,
+                    "absoluteMin": 0.1,
+                    "absoluteMax": 0.95,
+                    "maxChangePerSecond": 0.5,
+                    "minFrequency": 0.02,
+                    "maxFrequency": 0.3,
+                    "freezeChance": 0.25
+                }
+            },
+            "cubeHeight": {
+                "interpolationPeriodMin": 5,
+                "interpolationPeriodMax": 20,
+                "shuffler": {
+                    "muted": true,
+                    "absoluteMin": 0.2,
+                    "absoluteMax": 2.5,
+                    "maxChangePerSecond": 0.5,
+                    "minFrequency": 0.02,
+                    "maxFrequency": 0.3,
+                    "freezeChance": 0.3
+                }
+            },
+            "hue": {
+                "interpolationPeriodMin": 5,
+                "interpolationPeriodMax": 22,
+                "shuffler": {
+                    "muted": false,
+                    "absoluteMin": 0,
+                    "absoluteMax": 3,
+                    "maxChangePerSecond": 0.1,
+                    "minFrequency": 0.01,
+                    "maxFrequency": 0.3,
+                    "freezeChance": 0.15
+                }
+            },
+            "positionX": {
+                "interpolationPeriodMin": 5,
+                "interpolationPeriodMax": 15,
+                "shuffler": {
+                    "muted": false,
+                    "absoluteMin": -10,
+                    "absoluteMax": 10,
+                    "maxChangePerSecond": 3,
+                    "minFrequency": 0.02,
+                    "maxFrequency": 0.3,
+                    "freezeChance": 0.25
+                }
+            },
+            "positionY": {
+                "interpolationPeriodMin": 5,
+                "interpolationPeriodMax": 15,
+                "shuffler": {
+                    "muted": false,
+                    "absoluteMin": -6,
+                    "absoluteMax": 6,
+                    "maxChangePerSecond": 3,
+                    "minFrequency": 0.02,
+                    "maxFrequency": 0.3,
+                    "freezeChance": 0.25
+                }
+            },
+            "rotationZ": {
+                "interpolationPeriodMin": 3,
+                "interpolationPeriodMax": 10,
+                "shuffler": {
+                    "muted": false,
+                    "absoluteMin": -3,
+                    "absoluteMax": 3,
+                    "maxChangePerSecond": 2,
+                    "minFrequency": 0.02,
+                    "maxFrequency": 0.1,
+                    "freezeChance": 0.2,
+                    "isLoopable": true,
+                    "sawtoothChance": 0.4
+                }
+            },
+            "spread": {
+                "interpolationPeriodMin": 20,
+                "interpolationPeriodMax": 20,
+                "shuffler": {
+                    "muted": true,
+                    "absoluteMin": 1.0,
+                    "absoluteMax": 1.0,
+                    "maxChangePerSecond": 0.3,
+                    "minFrequency": 0.02,
+                    "maxFrequency": 0.08,
+                    "freezeChance": 0.35
+                }
+            }
+        }
     }
 ]
