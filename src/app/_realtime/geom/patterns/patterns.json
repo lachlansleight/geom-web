@@ -2,7 +2,7 @@
     {
         "name": "Reverse Dissolve",
         "camera": {
-            "orbitCenter": [0, 0, 50],
+            "orbitCenter": [0, 0, 20],
             "lookAtAmount": 1.0,
             "radius": { "center": 14, "amplitude": 5, "period": 30, "phase": 0 },
             "theta": { "center": 0, "amplitude": 25, "period": 40, "phase": 0.25 },
@@ -33,7 +33,7 @@
             "noiseColorFadeAge": 5.0,
             "noiseHueFactor": 1.0,
             "noiseSaturationFactor": 0.0,
-            "noiseBrightnessFactor": 30.0,
+            "noiseBrightnessFactor": 1.0,
             "bloomThreshold": 1.0,
             "bloomIntensity": 1.0
         },
