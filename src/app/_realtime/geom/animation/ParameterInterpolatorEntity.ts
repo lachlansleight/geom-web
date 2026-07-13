@@ -28,6 +28,9 @@ function cubicInOut(t: number): number {
  * and exposes the result as `.value`. When it reaches one end, it reshuffles
  * the departed oscillator and reverses direction.
  *
+ * If the shuffler config is `isIntegrated`, the blended result is treated as a
+ * rate (units/second) and accumulated into `.value` instead of assigned.
+ *
  * This entity is NOT registered in GlobalApp — its parent drives its update().
  */
 export default class ParameterInterpolatorEntity extends RealtimeEntity {
@@ -96,7 +99,18 @@ export default class ParameterInterpolatorEntity extends RealtimeEntity {
 
         // Apply cubic ease and lerp
         const easedT = cubicInOut(this._t);
-        this.value = valueFrom + (valueTo - valueFrom) * easedT;
+        const blended = valueFrom + (valueTo - valueFrom) * easedT;
+
+        if (this.shuffler.config.isIntegrated) {
+            // Integrated params: the blended value is a rate (units/second), accumulated
+            // here. Rate discontinuities (e.g. sawtooth wraps) can never teleport the
+            // value, so the output stays continuous through shuffles and wraps.
+            // The accumulator deliberately survives updateConfig() so pattern switches
+            // are seamless too.
+            this.value += blended * deltaTime;
+        } else {
+            this.value = blended;
+        }
 
         // Check for direction reversal + reshuffle.
         // Key: shuffle the oscillator we're NOT reading from.

@@ -15,9 +15,9 @@ export interface ShufflerConfig {
     maxFrequency: number;
     /** Probability (0-1) of freezing to a constant value on shuffle */
     freezeChance: number;
-    /** Whether this parameter wraps (e.g. rotation, hue) */
-    isLoopable: boolean;
-    /** Probability (0-1) of using sawtooth for loopable params */
+    /** Whether the consumer integrates this parameter (value is a rate per second, not an absolute) */
+    isIntegrated: boolean;
+    /** Probability (0-1) of using sawtooth for integrated params */
     sawtoothChance: number;
 }
 
@@ -29,7 +29,7 @@ export const DEFAULT_SHUFFLER_CONFIG: ShufflerConfig = {
     minFrequency: 0.02,
     maxFrequency: 0.15,
     freezeChance: 0.3,
-    isLoopable: false,
+    isIntegrated: false,
     sawtoothChance: 0.5,
 };
 
@@ -42,12 +42,15 @@ export default class OscillatorShuffler {
 
     /** Randomise the target oscillator's params within this shuffler's bounds */
     shuffle(target: OscillatorParams): void {
-        const { absoluteMin, absoluteMax, freezeChance, isLoopable, sawtoothChance } = this.config;
+        const { absoluteMin, absoluteMax, freezeChance, isIntegrated, sawtoothChance } = this.config;
 
         // Chance to freeze (hold constant)
         if (Math.random() < freezeChance || this.config.muted) {
             target.shape = OscillatorShape.Constant;
-            if (this.config.muted) {
+            if (isIntegrated) {
+                // A frozen rate means "hold still", not "drift at a random speed"
+                target.center = 0;
+            } else if (this.config.muted) {
                 target.center = (absoluteMin + absoluteMax) / 2;
             } else {
                 target.center = randomRange(absoluteMin, absoluteMax);
@@ -59,7 +62,7 @@ export default class OscillatorShuffler {
         }
 
         // Pick waveform shape
-        if (isLoopable && Math.random() < sawtoothChance) {
+        if (isIntegrated && Math.random() < sawtoothChance) {
             target.shape = OscillatorShape.Sawtooth;
         } else {
             target.shape = OscillatorShape.Sine;

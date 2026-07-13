@@ -33,7 +33,9 @@
             "noiseColorFadeAge": 5.0,
             "noiseHueFactor": 1.0,
             "noiseSaturationFactor": 0.0,
-            "noiseBrightnessFactor": 30.0
+            "noiseBrightnessFactor": 30.0,
+            "bloomThreshold": 1.0,
+            "bloomIntensity": 1.0
         },
         "animators": {
             "radius": {
@@ -119,13 +121,13 @@
                 "interpolationPeriodMax": 10,
                 "shuffler": {
                     "muted": false,
-                    "absoluteMin": -3,
-                    "absoluteMax": 3,
-                    "maxChangePerSecond": 2,
+                    "absoluteMin": -0.6,
+                    "absoluteMax": 0.6,
+                    "maxChangePerSecond": 0.5,
                     "minFrequency": 0.02,
                     "maxFrequency": 0.1,
                     "freezeChance": 0.2,
-                    "isLoopable": true,
+                    "isIntegrated": true,
                     "sawtoothChance": 0.4
                 }
             },
@@ -261,13 +263,13 @@
                 "interpolationPeriodMax": 10,
                 "shuffler": {
                     "muted": false,
-                    "absoluteMin": -3,
-                    "absoluteMax": 3,
-                    "maxChangePerSecond": 2,
+                    "absoluteMin": -0.6,
+                    "absoluteMax": 0.6,
+                    "maxChangePerSecond": 0.5,
                     "minFrequency": 0.02,
                     "maxFrequency": 0.1,
                     "freezeChance": 0.2,
-                    "isLoopable": true,
+                    "isIntegrated": true,
                     "sawtoothChance": 0.4
                 }
             },
@@ -401,13 +403,13 @@
                 "interpolationPeriodMax": 10,
                 "shuffler": {
                     "muted": false,
-                    "absoluteMin": -3,
-                    "absoluteMax": 3,
-                    "maxChangePerSecond": 2,
+                    "absoluteMin": -0.6,
+                    "absoluteMax": 0.6,
+                    "maxChangePerSecond": 0.5,
                     "minFrequency": 0.02,
                     "maxFrequency": 0.1,
                     "freezeChance": 0.2,
-                    "isLoopable": true,
+                    "isIntegrated": true,
                     "sawtoothChance": 0.4
                 }
             },

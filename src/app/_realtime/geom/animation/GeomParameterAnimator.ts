@@ -101,13 +101,15 @@ const PARAMETER_DEFAULTS: InterpolatorConfig[] = [
         interpolationPeriodMax: 10,
         shuffler: {
             muted: false,
-            absoluteMin: -3,
-            absoluteMax: 3,
-            maxChangePerSecond: 2,
+            // Integrated: bounds are angular velocity (rad/s), maxChangePerSecond is
+            // acceleration (rad/s²)
+            absoluteMin: -0.6,
+            absoluteMax: 0.6,
+            maxChangePerSecond: 0.5,
             minFrequency: 0.02,
             maxFrequency: 0.1,
             freezeChance: 0.2,
-            isLoopable: true,
+            isIntegrated: true,
             sawtoothChance: 0.4,
         },
     },
@@ -233,6 +235,9 @@ export default class GeomParameterAnimator extends RealtimeEntity {
         // Position and rotation apply to the 3D object, not the config
         target3D.position.x = this.getValue("positionX");
         target3D.position.y = this.getValue("positionY");
-        target3D.rotation.z = this.getValue("rotationZ");
+
+        // rotationZ is integrated (rad/s accumulated to an unbounded angle); wrapping
+        // by whole turns yields an identical transform while keeping the float small
+        target3D.rotation.z = this.getValue("rotationZ") % (Math.PI * 2);
     }
 }

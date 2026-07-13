@@ -21,7 +21,7 @@ export interface ShufflerDef {
     minFrequency: number;
     maxFrequency: number;
     freezeChance?: number;
-    isLoopable?: boolean;
+    isIntegrated?: boolean;
     sawtoothChance?: number;
 }
 
@@ -99,6 +99,10 @@ export interface GeomPattern {
         noiseSaturationFactor?: number;
         /** Brightness multiplier reached at the end of the fade (unclamped, >1 = boost). 1 = off. */
         noiseBrightnessFactor?: number;
+        /** Luminance above which pixels bleed into bloom. Default 1.0 (only HDR-boosted colors bloom). */
+        bloomThreshold?: number;
+        /** Bloom strength added at composite. 0 = off (default). */
+        bloomIntensity?: number;
     };
 
     animators: {
