@@ -89,6 +89,16 @@ export interface GeomPattern {
         noiseScale?: number;
         noiseStrength?: number;
         dissolveForwardBias?: number;
+        /** Particle age (s) at which the noise color shift starts. Range 0-10. */
+        noiseColorStartAge?: number;
+        /** Seconds after start age over which the color factors blend in. Range 0-10. */
+        noiseColorFadeAge?: number;
+        /** Hue multiplier reached at the end of the fade (wraps). 1 = off. */
+        noiseHueFactor?: number;
+        /** Saturation multiplier reached at the end of the fade (clamped to 1). 1 = off. */
+        noiseSaturationFactor?: number;
+        /** Brightness multiplier reached at the end of the fade (unclamped, >1 = boost). 1 = off. */
+        noiseBrightnessFactor?: number;
     };
 
     animators: {

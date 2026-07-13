@@ -51,6 +51,12 @@ export interface GeomConfig {
     particleMinSize: number;
     particleShrinkTime: number;
     particleTranslationPerSecond: THREE.Vector3;
+    // Noise color (age-based HSV shift, delayed like the noise ramp)
+    noiseColorStartAge: number;
+    noiseColorFadeAge: number;
+    noiseHueFactor: number;
+    noiseSaturationFactor: number;
+    noiseBrightnessFactor: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -97,6 +103,11 @@ const DEFAULT_CONFIG: GeomConfig = {
     particleMinSize: 0.3,
     particleShrinkTime: 5.0,
     particleTranslationPerSecond: new THREE.Vector3(0, 0, 0),
+    noiseColorStartAge: 3.0,
+    noiseColorFadeAge: 5.0,
+    noiseHueFactor: 1.0, // all factors 1.0 = effect off
+    noiseSaturationFactor: 1.0,
+    noiseBrightnessFactor: 1.0,
 };
 
 export default class GeomContainerEntity extends RealtimeEntity {

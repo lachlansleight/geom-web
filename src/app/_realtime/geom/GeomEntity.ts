@@ -63,6 +63,12 @@ export interface GeomConfig {
     particleMinSize: number;
     particleShrinkTime: number;
     particleTranslationPerSecond: THREE.Vector3;
+    // Noise color (age-based HSV shift, delayed like the noise ramp)
+    noiseColorStartAge: number;
+    noiseColorFadeAge: number;
+    noiseHueFactor: number;
+    noiseSaturationFactor: number;
+    noiseBrightnessFactor: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -109,6 +115,11 @@ const DEFAULT_CONFIG: GeomConfig = {
     particleMinSize: 0.1,
     particleShrinkTime: 5.0,
     particleTranslationPerSecond: new THREE.Vector3(0, 0, 0),
+    noiseColorStartAge: 3.0,
+    noiseColorFadeAge: 5.0,
+    noiseHueFactor: 1.0, // all factors 1.0 = effect off
+    noiseSaturationFactor: 1.0,
+    noiseBrightnessFactor: 1.0,
 };
 
 export default class GeomEntity extends RealtimeEntity {
@@ -400,7 +411,7 @@ export default class GeomEntity extends RealtimeEntity {
         });
 
         this.particleForceUniformBuffer = this.device.createBuffer({
-            size: 64,
+            size: 80, // 5 × vec4<f32>
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -869,8 +880,8 @@ export default class GeomEntity extends RealtimeEntity {
     private updateParticleForceUniforms(deltaTime: number): void {
         if (!this.device || !this.particleForceUniformBuffer) return;
 
-        // 3 × vec4<f32> = 12 floats. Pad to 16 for buffer alignment.
-        const data = new Float32Array(16);
+        // 5 × vec4<f32> = 20 floats.
+        const data = new Float32Array(20);
 
         // timeParams: x=time, y=dt, z=rampTime, w=forceStrength
         data[0] = this.time;
@@ -878,16 +889,16 @@ export default class GeomEntity extends RealtimeEntity {
         data[2] = this.config.particleRampTime;
         data[3] = this.config.particleForceStrength;
 
-        // noiseParams: x=noiseScale, y=damping, z=noiseTimeScale, w=unused
+        // noiseParams: x=noiseScale, y=damping, z=noiseTimeScale, w=noiseColorStartAge
         data[4] = this.config.particleNoiseScale;
         data[5] = this.config.particleDamping;
         data[6] = this.config.particleNoiseTimeScale;
-        data[7] = 0;
+        data[7] = this.config.noiseColorStartAge;
 
-        // shrinkParams: x=shrinkTime, y=minSize, z=unused, w=unused
+        // shrinkParams: x=shrinkTime, y=minSize, z=noiseColorFadeAge, w=unused
         data[8] = this.config.particleShrinkTime;
         data[9] = this.config.particleMinSize;
-        data[10] = 0;
+        data[10] = this.config.noiseColorFadeAge;
         data[11] = 0;
 
         // translation: xyz=translation per second, w=unused
@@ -895,6 +906,12 @@ export default class GeomEntity extends RealtimeEntity {
         data[13] = this.config.particleTranslationPerSecond.y;
         data[14] = this.config.particleTranslationPerSecond.z;
         data[15] = 0;
+
+        // noiseColorFactors: x=hue, y=saturation, z=brightness, w=unused
+        data[16] = this.config.noiseHueFactor;
+        data[17] = this.config.noiseSaturationFactor;
+        data[18] = this.config.noiseBrightnessFactor;
+        data[19] = 0;
 
         this.device.queue.writeBuffer(this.particleForceUniformBuffer, 0, data);
     }

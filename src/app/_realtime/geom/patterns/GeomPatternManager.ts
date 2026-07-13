@@ -125,6 +125,14 @@ export default class GeomPatternManager extends RealtimeEntity {
         if (g.dissolveForwardBias !== undefined) config.dissolveForwardBias = g.dissolveForwardBias;
         if (g.endCrunchSlices !== undefined) config.endCrunchSlices = g.endCrunchSlices;
 
+        // Noise color: always assigned (with off/neutral fallbacks) so patterns
+        // that omit these keys don't inherit the effect from the previous pattern.
+        config.noiseColorStartAge = g.noiseColorStartAge ?? 3.0;
+        config.noiseColorFadeAge = g.noiseColorFadeAge ?? 5.0;
+        config.noiseHueFactor = g.noiseHueFactor ?? 1.0;
+        config.noiseSaturationFactor = g.noiseSaturationFactor ?? 1.0;
+        config.noiseBrightnessFactor = g.noiseBrightnessFactor ?? 1.0;
+
         if (g.translationPerSecond) {
             config.translationPerSecond.set(...g.translationPerSecond);
         }

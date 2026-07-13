@@ -30,10 +30,11 @@ struct Particle {
 }
 
 struct ParticleForceUniforms {
-    timeParams: vec4<f32>,    // x=time, y=dt, z=rampTime, w=forceStrength
-    noiseParams: vec4<f32>,   // x=noiseScale, y=damping, z=noiseTimeScale, w=unused
-    shrinkParams: vec4<f32>,  // x=shrinkTime, y=minSize, z=unused, w=unused
-    translation: vec4<f32>,   // xyz=constant world translation per second, w=unused
+    timeParams: vec4<f32>,        // x=time, y=dt, z=rampTime, w=forceStrength
+    noiseParams: vec4<f32>,       // x=noiseScale, y=damping, z=noiseTimeScale, w=noiseColorStartAge
+    shrinkParams: vec4<f32>,      // x=shrinkTime, y=minSize, z=noiseColorFadeAge, w=unused
+    translation: vec4<f32>,       // xyz=constant world translation per second, w=unused
+    noiseColorFactors: vec4<f32>, // x=hueFactor, y=saturationFactor, z=brightnessFactor, w=unused
 }
 
 @group(0) @binding(0) var<storage, read> sliceBuffer: array<CubeTunnelSlice>;
@@ -74,6 +75,31 @@ fn valueNoise3D(p: vec3<f32>) -> f32 {
     return mix(y0, y1, u.z) * 2.0 - 1.0;
 }
 
+fn rgb2hsv(c: vec3<f32>) -> vec3<f32> {
+    let K = vec4<f32>(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    let p = mix(vec4<f32>(c.bg, K.wz), vec4<f32>(c.gb, K.xy), step(c.b, c.g));
+    let q = mix(vec4<f32>(p.xyw, c.r), vec4<f32>(c.r, p.yzx), step(p.x, c.r));
+    let d = q.x - min(q.w, q.y);
+    let e = 1.0e-10;
+    return vec3<f32>(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+fn hsv2rgb(c: vec3<f32>) -> vec3<f32> {
+    let K = vec4<f32>(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    let p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, vec3<f32>(0.0), vec3<f32>(1.0)), c.y);
+}
+
+// Scale H/S/V by per-channel factors, blended in by t (0 = untouched).
+// Hue wraps; saturation clamps to [0,1] so hsv2rgb stays valid; brightness
+// is left unclamped so factors > 1 can push colors past 1 (HDR headroom).
+fn applyNoiseColor(rgb: vec3<f32>, factors: vec3<f32>, t: f32) -> vec3<f32> {
+    var hsv = rgb2hsv(rgb) * mix(vec3<f32>(1.0), factors, t);
+    hsv.x = fract(hsv.x);
+    hsv.y = clamp(hsv.y, 0.0, 1.0);
+    return hsv2rgb(hsv);
+}
+
 // Three decorrelated noise samples form a vector field.
 fn noiseVec3(p: vec3<f32>, t: f32) -> vec3<f32> {
     return vec3<f32>(
@@ -105,6 +131,9 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
     let noiseTimeScale = uniforms.noiseParams.z;
     let shrinkTime = uniforms.shrinkParams.x;
     let minSize    = uniforms.shrinkParams.y;
+    let colorStartAge = uniforms.noiseParams.w;
+    let colorFadeAge  = uniforms.shrinkParams.z;
+    let colorFactors  = uniforms.noiseColorFactors.xyz;
     let translationPerSec = uniforms.translation.xyz;
 
     var particle = particleBuffer[triIdx];
@@ -188,18 +217,27 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
     // changes edge directions, so the vertexGeneration normal is stale.
     let finalNormal = normalize(cross(finalPos1 - finalPos0, finalPos2 - finalPos0));
 
+    // Noise color: shift the particle's HSV as it ages, delayed like the noise
+    // ramp so the fresh geometry at the front of the tunnel stays untouched.
+    // Holds at 1x until colorStartAge, then lerps each channel's factor in
+    // over colorFadeAge seconds. All factors = 1 disables the effect.
+    let colorT = saturate((timeSinceSet - colorStartAge) / max(colorFadeAge, 0.0001));
+
     var v0 = vertexBuffer[v0Idx];
     v0.position = finalPos0;
     v0.normal = finalNormal;
+    v0.color = applyNoiseColor(v0.color, colorFactors, colorT);
     vertexBuffer[v0Idx] = v0;
 
     var v1 = vertexBuffer[v1Idx];
     v1.position = finalPos1;
     v1.normal = finalNormal;
+    v1.color = applyNoiseColor(v1.color, colorFactors, colorT);
     vertexBuffer[v1Idx] = v1;
 
     var v2 = vertexBuffer[v2Idx];
     v2.position = finalPos2;
     v2.normal = finalNormal;
+    v2.color = applyNoiseColor(v2.color, colorFactors, colorT);
     vertexBuffer[v2Idx] = v2;
 }
