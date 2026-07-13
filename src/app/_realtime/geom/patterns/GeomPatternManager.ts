@@ -133,6 +133,10 @@ export default class GeomPatternManager extends RealtimeEntity {
         config.noiseSaturationFactor = g.noiseSaturationFactor ?? 1.0;
         config.noiseBrightnessFactor = g.noiseBrightnessFactor ?? 1.0;
 
+        // Bloom: same always-assign treatment; off unless the pattern opts in.
+        config.bloomThreshold = g.bloomThreshold ?? 1.0;
+        config.bloomIntensity = g.bloomIntensity ?? 0.0;
+
         if (g.translationPerSecond) {
             config.translationPerSecond.set(...g.translationPerSecond);
         }

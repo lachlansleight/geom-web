@@ -11,12 +11,17 @@ import sliceOffsetPerSecondShader from "./shaders/sliceOffsetPerSecond.wgsl";
 import vertexGenerationShader from "./shaders/vertexGeneration.wgsl";
 import particleForceShader from "./shaders/particleForce.wgsl";
 import geomRenderShader from "./shaders/geomRender.wgsl";
+import bloomShader from "./shaders/bloom.wgsl";
 
 // Struct sizes (in bytes) - must match WGSL
 const SLICE_STRUCT_SIZE = 128; // 64 (mat4) + 4 + 12 + 12 + 12 + 4 + 4 + 4 + 4 + 4 + 4 = 128 (padded)
 const VERTEX_STRUCT_SIZE = 48; // 12 + 12 + 12 + 8 + 4 = 48
 const PARTICLE_STRUCT_SIZE = 32; // 2 × vec4<f32> (offset, velocity)
 const TRIANGLES_PER_SLICE = 512; // 64 cubes × 4 faces × 2 tris
+
+// HDR scene + bloom chain render target format
+const HDR_FORMAT: GPUTextureFormat = "rgba16float";
+const BLOOM_BLUR_PASSES = 4;
 
 export interface GeomConfig {
     sliceCount: number;
@@ -69,6 +74,9 @@ export interface GeomConfig {
     noiseHueFactor: number;
     noiseSaturationFactor: number;
     noiseBrightnessFactor: number;
+    // Screen-space bloom
+    bloomThreshold: number;
+    bloomIntensity: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -120,6 +128,8 @@ const DEFAULT_CONFIG: GeomConfig = {
     noiseHueFactor: 1.0, // all factors 1.0 = effect off
     noiseSaturationFactor: 1.0,
     noiseBrightnessFactor: 1.0,
+    bloomThreshold: 1.0,
+    bloomIntensity: 0.0, // 0 = bloom off
 };
 
 export default class GeomEntity extends RealtimeEntity {
@@ -146,6 +156,24 @@ export default class GeomEntity extends RealtimeEntity {
     // Render pipeline
     private renderPipeline: GPURenderPipeline | null = null;
     private depthTexture: GPUTexture | null = null;
+
+    // Bloom pipeline (HDR scene target + bright pass + Kawase blur + composite)
+    private hdrTexture: GPUTexture | null = null;
+    private bloomTextureA: GPUTexture | null = null;
+    private bloomTextureB: GPUTexture | null = null;
+    private hdrView: GPUTextureView | null = null;
+    private bloomViewA: GPUTextureView | null = null;
+    private bloomViewB: GPUTextureView | null = null;
+    private bloomSampler: GPUSampler | null = null;
+    private brightPassPipeline: GPURenderPipeline | null = null;
+    private blurPipeline: GPURenderPipeline | null = null;
+    private compositePipeline: GPURenderPipeline | null = null;
+    private brightPassUniformBuffer: GPUBuffer | null = null;
+    private compositeUniformBuffer: GPUBuffer | null = null;
+    private blurOffsetBuffers: GPUBuffer[] = [];
+    private brightPassBindGroup: GPUBindGroup | null = null;
+    private blurBindGroups: GPUBindGroup[] = [];
+    private compositeBindGroup: GPUBindGroup | null = null;
 
     // Uniform buffers
     private setNowUniformBuffer: GPUBuffer | null = null;
@@ -337,7 +365,7 @@ export default class GeomEntity extends RealtimeEntity {
                 if (newWidth > 0 && newHeight > 0) {
                     this.canvas.width = newWidth;
                     this.canvas.height = newHeight;
-                    this.recreateDepthTexture();
+                    this.recreateRenderTargets();
                 }
             }
         };
@@ -350,18 +378,53 @@ export default class GeomEntity extends RealtimeEntity {
         });
     }
 
-    private recreateDepthTexture(): void {
+    private recreateRenderTargets(): void {
         if (!this.device || !this.canvas) return;
 
-        if (this.depthTexture) {
-            this.depthTexture.destroy();
-        }
+        this.depthTexture?.destroy();
+        this.hdrTexture?.destroy();
+        this.bloomTextureA?.destroy();
+        this.bloomTextureB?.destroy();
+
+        const width = Math.max(1, this.canvas.width);
+        const height = Math.max(1, this.canvas.height);
 
         this.depthTexture = this.device.createTexture({
-            size: [this.canvas.width, this.canvas.height],
+            size: [width, height],
             format: "depth24plus",
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
         });
+
+        // HDR scene target — float so noise-color brightness factors > 1
+        // survive into the bloom passes instead of clamping at the canvas.
+        this.hdrTexture = this.device.createTexture({
+            size: [width, height],
+            format: HDR_FORMAT,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+        });
+
+        // Half-res ping-pong pair for the bright pass + Kawase blur.
+        const halfWidth = Math.max(1, width >> 1);
+        const halfHeight = Math.max(1, height >> 1);
+        this.bloomTextureA = this.device.createTexture({
+            size: [halfWidth, halfHeight],
+            format: HDR_FORMAT,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+        });
+        this.bloomTextureB = this.device.createTexture({
+            size: [halfWidth, halfHeight],
+            format: HDR_FORMAT,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+        });
+
+        this.hdrView = this.hdrTexture.createView();
+        this.bloomViewA = this.bloomTextureA.createView();
+        this.bloomViewB = this.bloomTextureB.createView();
+
+        // Bloom bind groups reference the old texture views — rebuild them.
+        // No-ops during init (pipelines don't exist yet); createBindGroups
+        // handles the first build.
+        this.createBloomBindGroups();
     }
 
     private createBuffers(): void {
@@ -420,8 +483,35 @@ export default class GeomEntity extends RealtimeEntity {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
-        // Depth texture
-        this.recreateDepthTexture();
+        // Bloom uniforms: per-frame bright-pass and composite params, plus one
+        // static offset buffer per blur pass (BloomParams is a single vec4).
+        this.brightPassUniformBuffer = this.device.createBuffer({
+            size: 16,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        this.compositeUniformBuffer = this.device.createBuffer({
+            size: 16,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        this.blurOffsetBuffers = [];
+        for (let i = 0; i < BLOOM_BLUR_PASSES; i++) {
+            const buffer = this.device.createBuffer({
+                size: 16,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+            this.device.queue.writeBuffer(buffer, 0, new Float32Array([0, 0, 0, i + 0.5]));
+            this.blurOffsetBuffers.push(buffer);
+        }
+
+        this.bloomSampler = this.device.createSampler({
+            magFilter: "linear",
+            minFilter: "linear",
+            addressModeU: "clamp-to-edge",
+            addressModeV: "clamp-to-edge",
+        });
+
+        // Depth + HDR + bloom render targets
+        this.recreateRenderTargets();
 
         // Debug staging buffer for reading back data
         if (this.debugMode) {
@@ -518,7 +608,9 @@ export default class GeomEntity extends RealtimeEntity {
                 entryPoint: "fragmentMain",
                 targets: [
                     {
-                        format: this.presentationFormat,
+                        // Scene renders to the HDR texture; the bloom composite
+                        // pass writes to the canvas.
+                        format: HDR_FORMAT,
                         blend: {
                             color: {
                                 srcFactor: "src-alpha" as GPUBlendFactor,
@@ -543,6 +635,92 @@ export default class GeomEntity extends RealtimeEntity {
                 depthCompare: "less" as GPUCompareFunction,
                 format: "depth24plus" as GPUTextureFormat,
             },
+        });
+
+        // Bloom post-processing pipelines (fullscreen triangle, no blending —
+        // the composite shader handles combining scene and glow itself).
+        const bloomModule = this.device.createShaderModule({
+            code: bloomShader,
+        });
+
+        this.brightPassPipeline = this.device.createRenderPipeline({
+            layout: "auto",
+            vertex: { module: bloomModule, entryPoint: "fullscreenVertex" },
+            fragment: {
+                module: bloomModule,
+                entryPoint: "brightPassMain",
+                targets: [{ format: HDR_FORMAT }],
+            },
+            primitive: { topology: "triangle-list" as GPUPrimitiveTopology },
+        });
+
+        this.blurPipeline = this.device.createRenderPipeline({
+            layout: "auto",
+            vertex: { module: bloomModule, entryPoint: "fullscreenVertex" },
+            fragment: {
+                module: bloomModule,
+                entryPoint: "blurMain",
+                targets: [{ format: HDR_FORMAT }],
+            },
+            primitive: { topology: "triangle-list" as GPUPrimitiveTopology },
+        });
+
+        this.compositePipeline = this.device.createRenderPipeline({
+            layout: "auto",
+            vertex: { module: bloomModule, entryPoint: "fullscreenVertex" },
+            fragment: {
+                module: bloomModule,
+                entryPoint: "compositeMain",
+                targets: [{ format: this.presentationFormat }],
+            },
+            primitive: { topology: "triangle-list" as GPUPrimitiveTopology },
+        });
+    }
+
+    private createBloomBindGroups(): void {
+        if (
+            !this.device ||
+            !this.bloomSampler ||
+            !this.hdrView ||
+            !this.bloomViewA ||
+            !this.bloomViewB ||
+            !this.brightPassPipeline ||
+            !this.blurPipeline ||
+            !this.compositePipeline ||
+            !this.brightPassUniformBuffer ||
+            !this.compositeUniformBuffer
+        )
+            return;
+
+        this.brightPassBindGroup = this.device.createBindGroup({
+            layout: this.brightPassPipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: this.bloomSampler },
+                { binding: 1, resource: this.hdrView },
+                { binding: 2, resource: { buffer: this.brightPassUniformBuffer } },
+            ],
+        });
+
+        // Blur ping-pong: bright pass fills A, then A→B, B→A, A→B, B→A.
+        this.blurBindGroups = this.blurOffsetBuffers.map((buffer, i) =>
+            this.device!.createBindGroup({
+                layout: this.blurPipeline!.getBindGroupLayout(0),
+                entries: [
+                    { binding: 0, resource: this.bloomSampler! },
+                    { binding: 1, resource: i % 2 === 0 ? this.bloomViewA! : this.bloomViewB! },
+                    { binding: 2, resource: { buffer } },
+                ],
+            })
+        );
+
+        this.compositeBindGroup = this.device.createBindGroup({
+            layout: this.compositePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: this.bloomSampler },
+                { binding: 1, resource: this.hdrView },
+                { binding: 2, resource: { buffer: this.compositeUniformBuffer } },
+                { binding: 3, resource: this.bloomViewA },
+            ],
         });
     }
 
@@ -617,6 +795,8 @@ export default class GeomEntity extends RealtimeEntity {
                 ],
             });
         }
+
+        this.createBloomBindGroups();
     }
 
     private initializeSliceBuffer(): void {
@@ -998,7 +1178,15 @@ export default class GeomEntity extends RealtimeEntity {
             !this.renderPipeline ||
             !this.renderBindGroup ||
             !this.depthTexture ||
-            !this.renderUniformBuffer
+            !this.renderUniformBuffer ||
+            !this.hdrView ||
+            !this.brightPassPipeline ||
+            !this.blurPipeline ||
+            !this.compositePipeline ||
+            !this.brightPassBindGroup ||
+            !this.compositeBindGroup ||
+            !this.brightPassUniformBuffer ||
+            !this.compositeUniformBuffer
         )
             return;
 
@@ -1040,15 +1228,26 @@ export default class GeomEntity extends RealtimeEntity {
 
         this.device.queue.writeBuffer(this.renderUniformBuffer, 0, renderData);
 
-        // Get current texture
-        const textureView = this.context.getCurrentTexture().createView();
+        // Bloom params: x=threshold, y=softKnee, z=intensity, w=blurOffset
+        const threshold = this.config.bloomThreshold;
+        this.device.queue.writeBuffer(
+            this.brightPassUniformBuffer,
+            0,
+            new Float32Array([threshold, threshold * 0.5, 0, 0])
+        );
+        this.device.queue.writeBuffer(
+            this.compositeUniformBuffer,
+            0,
+            new Float32Array([0, 0, this.config.bloomIntensity, 0])
+        );
 
         const commandEncoder = this.device.createCommandEncoder();
 
+        // 1. Scene → HDR texture
         const renderPass = commandEncoder.beginRenderPass({
             colorAttachments: [
                 {
-                    view: textureView,
+                    view: this.hdrView,
                     clearValue: { r: 0, g: 0, b: 0, a: 0 },
                     loadOp: "clear" as GPULoadOp,
                     storeOp: "store" as GPUStoreOp,
@@ -1070,6 +1269,56 @@ export default class GeomEntity extends RealtimeEntity {
         renderPass.draw(vertexCount);
 
         renderPass.end();
+
+        // 2. Bright pass → half-res bloom A
+        const brightPass = commandEncoder.beginRenderPass({
+            colorAttachments: [
+                {
+                    view: this.bloomViewA!,
+                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                    loadOp: "clear" as GPULoadOp,
+                    storeOp: "store" as GPUStoreOp,
+                },
+            ],
+        });
+        brightPass.setPipeline(this.brightPassPipeline);
+        brightPass.setBindGroup(0, this.brightPassBindGroup);
+        brightPass.draw(3);
+        brightPass.end();
+
+        // 3. Kawase blur ping-pong (even pass count, so the result lands in A)
+        for (let i = 0; i < this.blurBindGroups.length; i++) {
+            const blurPass = commandEncoder.beginRenderPass({
+                colorAttachments: [
+                    {
+                        view: i % 2 === 0 ? this.bloomViewB! : this.bloomViewA!,
+                        clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                        loadOp: "clear" as GPULoadOp,
+                        storeOp: "store" as GPUStoreOp,
+                    },
+                ],
+            });
+            blurPass.setPipeline(this.blurPipeline);
+            blurPass.setBindGroup(0, this.blurBindGroups[i]);
+            blurPass.draw(3);
+            blurPass.end();
+        }
+
+        // 4. Composite scene + bloom → canvas
+        const compositePass = commandEncoder.beginRenderPass({
+            colorAttachments: [
+                {
+                    view: this.context.getCurrentTexture().createView(),
+                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                    loadOp: "clear" as GPULoadOp,
+                    storeOp: "store" as GPUStoreOp,
+                },
+            ],
+        });
+        compositePass.setPipeline(this.compositePipeline);
+        compositePass.setBindGroup(0, this.compositeBindGroup);
+        compositePass.draw(3);
+        compositePass.end();
 
         this.device.queue.submit([commandEncoder.finish()]);
     }
@@ -1275,6 +1524,14 @@ export default class GeomEntity extends RealtimeEntity {
         this.particleForceUniformBuffer?.destroy();
         this.renderUniformBuffer?.destroy();
         this.depthTexture?.destroy();
+        this.hdrTexture?.destroy();
+        this.bloomTextureA?.destroy();
+        this.bloomTextureB?.destroy();
+        this.brightPassUniformBuffer?.destroy();
+        this.compositeUniformBuffer?.destroy();
+        for (const buffer of this.blurOffsetBuffers) {
+            buffer.destroy();
+        }
         this.debugStagingBuffer?.destroy();
 
         // Remove canvas

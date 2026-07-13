@@ -57,6 +57,9 @@ export interface GeomConfig {
     noiseHueFactor: number;
     noiseSaturationFactor: number;
     noiseBrightnessFactor: number;
+    // Screen-space bloom
+    bloomThreshold: number;
+    bloomIntensity: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -108,6 +111,8 @@ const DEFAULT_CONFIG: GeomConfig = {
     noiseHueFactor: 1.0, // all factors 1.0 = effect off
     noiseSaturationFactor: 1.0,
     noiseBrightnessFactor: 1.0,
+    bloomThreshold: 1.0,
+    bloomIntensity: 0.0, // 0 = bloom off
 };
 
 export default class GeomContainerEntity extends RealtimeEntity {
