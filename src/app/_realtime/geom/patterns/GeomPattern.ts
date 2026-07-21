@@ -34,6 +34,8 @@ export interface AnimatorDef {
 /** Original orbit-based camera (oscillator-driven spherical orbit around a point). */
 export interface OrbitCameraDef {
     mode?: "orbit";
+    /** Camera zoom applied when the pattern activates. Mousewheel zoom auto-saves back here. Default 1. */
+    defaultZoom?: number;
     orbitCenter: [number, number, number];
     lookAtAmount: number;
     radius: OscillatorDef;
@@ -44,6 +46,8 @@ export interface OrbitCameraDef {
 /** Camera that pins Z at a plane and rides on the ring's floor at that plane. */
 export interface FloorFollowCameraDef {
     mode: "floorFollow";
+    /** Camera zoom applied when the pattern activates. Mousewheel zoom auto-saves back here. Default 1. */
+    defaultZoom?: number;
     /** Camera Z plane the floor probe samples. Default 60. */
     cameraZ?: number;
     /** Distance below the ring floor at which the camera parks. */

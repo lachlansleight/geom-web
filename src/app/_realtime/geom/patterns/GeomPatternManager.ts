@@ -21,17 +21,20 @@ export default class GeomPatternManager extends RealtimeEntity {
     private cameraOrbit: CameraOrbitEntity;
     private cameraFloorFollow: CameraFloorFollowEntity;
     private geomContainer: GeomContainerEntity;
+    private setZoom?: (zoom: number) => void;
 
     constructor(
         cameraOrbit: CameraOrbitEntity,
         cameraFloorFollow: CameraFloorFollowEntity,
-        geomContainer: GeomContainerEntity
+        geomContainer: GeomContainerEntity,
+        setZoom?: (zoom: number) => void
     ) {
         super();
         this.object3D.name = "GeomPatternManager";
         this.cameraOrbit = cameraOrbit;
         this.cameraFloorFollow = cameraFloorFollow;
         this.geomContainer = geomContainer;
+        this.setZoom = setZoom;
 
         // Wire the floor-follow camera to the geom container so it can read
         // the GPU floor probe without us routing it on every pattern switch.
@@ -42,9 +45,15 @@ export default class GeomPatternManager extends RealtimeEntity {
 
     init(): void {
         super.init();
-        // Apply the first pattern
+        // Restore the last-viewed pattern (patterns.json writes trigger a dev
+        // page reload, so without this every zoom save would reset to pattern 0).
         if (this.patterns.length > 0) {
-            this.applyPattern(0);
+            const stored = Number(localStorage.getItem("geomPatternIndex"));
+            const index =
+                Number.isInteger(stored) && stored >= 0 && stored < this.patterns.length
+                    ? stored
+                    : 0;
+            this.applyPattern(index);
         }
     }
 
@@ -64,6 +73,7 @@ export default class GeomPatternManager extends RealtimeEntity {
 
     applyPattern(index: number): void {
         this.currentIndex = index;
+        localStorage.setItem("geomPatternIndex", String(index));
         const pattern = this.patterns[index];
         console.log(`Applying pattern: "${pattern.name}" (${index + 1}/${this.patterns.length})`);
 
@@ -75,6 +85,8 @@ export default class GeomPatternManager extends RealtimeEntity {
     private applyCameraConfig(pattern: GeomPattern): void {
         const cam = pattern.camera;
         const mode = cam.mode ?? "orbit";
+
+        this.setZoom?.(cam.defaultZoom ?? 1);
 
         if (mode === "floorFollow") {
             const fc = cam as FloorFollowCameraDef;

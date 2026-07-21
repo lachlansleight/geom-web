@@ -61,11 +61,56 @@ const Renderer = (): JSX.Element => {
         cameraZ: 10, // Position camera further back for perspective view
     });
 
+    // The hook returns a fresh interface each render, but the pattern manager and
+    // the debounced zoom save are created once — route them through a ref.
+    const cameraControlsRef = useRef(cameraControls);
+    useEffect(() => {
+        cameraControlsRef.current = cameraControls;
+    }, [cameraControls]);
+
+    // Persist the current mousewheel zoom into the current pattern's
+    // camera.defaultZoom in patterns.json (dev only, debounced).
+    const zoomSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const saveCurrentZoom = useCallback(() => {
+        const pm = patternManager.current;
+        if (!pm) return;
+        const zoom = Number(cameraControlsRef.current.getZoom().toFixed(4));
+        const pattern = pm.patterns[pm.currentIndex];
+        if (pattern.camera.defaultZoom === zoom) return;
+        // Keep the in-memory pattern in sync so switching away and back uses
+        // the new zoom without waiting for the file round-trip.
+        pattern.camera.defaultZoom = zoom;
+        fetch("/api/patterns", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ index: pm.currentIndex, defaultZoom: zoom }),
+        }).catch(err => console.error("Failed to save defaultZoom:", err));
+    }, []);
+
+    const scheduleZoomSave = useCallback(() => {
+        if (zoomSaveTimeout.current) clearTimeout(zoomSaveTimeout.current);
+        zoomSaveTimeout.current = setTimeout(() => {
+            zoomSaveTimeout.current = null;
+            saveCurrentZoom();
+        }, 1500);
+    }, [saveCurrentZoom]);
+
+    // Save immediately (if a save is pending) so zoom tweaks aren't lost or
+    // written against the wrong pattern when switching.
+    const flushZoomSave = useCallback(() => {
+        if (!zoomSaveTimeout.current) return;
+        clearTimeout(zoomSaveTimeout.current);
+        zoomSaveTimeout.current = null;
+        saveCurrentZoom();
+    }, [saveCurrentZoom]);
+
     // Set up the wheel event - this needs to be done in this strange way due to not being able to
     // override the event by default with react due to reasons
     useEffect(() => {
         const handleWheel = (e: WheelEvent) => {
             interactor.current?.handleWheelEvent(e);
+            scheduleZoomSave();
         };
 
         if (!canvasRef.current) return;
@@ -75,7 +120,7 @@ const Renderer = (): JSX.Element => {
         return () => {
             crc.removeEventListener("wheel", handleWheel);
         };
-    }, [canvasRef]);
+    }, [canvasRef, scheduleZoomSave]);
 
     // Set up the three.js scene, camera and renderer
     useEffect(() => {
@@ -184,7 +229,12 @@ const Renderer = (): JSX.Element => {
                 // }
 
                 // Create pattern manager after geom is ready
-                const pm = new GeomPatternManager(cameraOrbit, cameraFloorFollow, geomEntity);
+                const pm = new GeomPatternManager(
+                    cameraOrbit,
+                    cameraFloorFollow,
+                    geomEntity,
+                    zoom => cameraControlsRef.current.setZoom(zoom)
+                );
                 pm.init();
                 patternManager.current = pm;
                 showPatternOverlay(
@@ -210,6 +260,7 @@ const Renderer = (): JSX.Element => {
             if (e.type === "keydown" && patternManager.current) {
                 const pm = patternManager.current;
                 if (e.key === "ArrowRight") {
+                    flushZoomSave();
                     pm.nextPattern();
                     showPatternOverlay(
                         pm.patterns[pm.currentIndex].name,
@@ -217,6 +268,7 @@ const Renderer = (): JSX.Element => {
                         pm.patterns.length
                     );
                 } else if (e.key === "ArrowLeft") {
+                    flushZoomSave();
                     pm.previousPattern();
                     showPatternOverlay(
                         pm.patterns[pm.currentIndex].name,
@@ -226,7 +278,7 @@ const Renderer = (): JSX.Element => {
                 }
             }
         },
-        [interactor, patternManager]
+        [interactor, patternManager, flushZoomSave]
     );
 
     // Render!

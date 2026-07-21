@@ -2,6 +2,7 @@
     {
         "name": "Reverse Dissolve",
         "camera": {
+            "defaultZoom": 0.5736,
             "orbitCenter": [0, 0, 20],
             "lookAtAmount": 1.0,
             "radius": { "center": 14, "amplitude": 5, "period": 30, "phase": 0 },
@@ -150,6 +151,7 @@
         "name": "Floor Walk",
         "camera": {
             "mode": "floorFollow",
+            "defaultZoom": 1,
             "cameraZ": 100,
             "verticalOffset": 4,
             "halfLifeSeconds": 0.25,
@@ -291,6 +293,7 @@
     {
         "name": "Drift",
         "camera": {
+            "defaultZoom": 1,
             "orbitCenter": [0, 0, 50],
             "lookAtAmount": 1.0,
             "radius": { "center": 14, "amplitude": 5, "period": 30, "phase": 0 },

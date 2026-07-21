@@ -20,6 +20,8 @@ export type CameraControlsConfig = {
 export type CameraControlsInterface = {
     offsetZoom: (deltaZoom: number, targetX?: number, targetY?: number) => void;
     offsetPosition: (deltaX: number, deltaY: number, deltaZ: number) => void;
+    setZoom: (zoom: number) => void;
+    getZoom: () => number;
 };
 
 const useCameraControls = (config?: Partial<CameraControlsConfig>) => {
@@ -81,6 +83,19 @@ const useCameraControls = (config?: Partial<CameraControlsConfig>) => {
         },
         [fullConfig, targetZoom, zoomCenter]
     );
+
+    const setZoom = useCallback(
+        (zoom: number) => {
+            zoomCenter.current.set(0, 0);
+            targetZoom.current = Math.max(
+                fullConfig.zoomBounds.min,
+                Math.min(fullConfig.zoomBounds.max, zoom)
+            );
+        },
+        [fullConfig]
+    );
+
+    const getZoom = useCallback(() => targetZoom.current, []);
 
     const offsetPosition = useCallback(
         (deltaX: number, deltaY: number, deltaZ: number) => {
@@ -147,6 +162,8 @@ const useCameraControls = (config?: Partial<CameraControlsConfig>) => {
     const output: CameraControlsInterface = {
         offsetZoom,
         offsetPosition,
+        setZoom,
+        getZoom,
     };
     return output;
 };
