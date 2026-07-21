@@ -31,6 +31,7 @@ const Header = (): JSX.Element => {
             AudioCapture.instance.flicker,
             AudioCapture.instance.pulse,
             AudioCapture.instance.vibe,
+            AudioCapture.instance.mood,
         ]);
     }, []);
 
@@ -71,7 +72,9 @@ const Header = (): JSX.Element => {
                                               ? "🟡"
                                               : index === 8
                                                 ? "💛"
-                                                : ""}
+                                                : index === 9
+                                                  ? "🟨"
+                                                  : ""}
                         </span>
                         {/* <span className="text-xs text-neutral-100 font-bold absolute left-0 top-0 w-full h-full text-center" style={{ opacity: level * 0.5 + 0.1 }}>{level.toFixed(2)}</span> */}
                     </div>

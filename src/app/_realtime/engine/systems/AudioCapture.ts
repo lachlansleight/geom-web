@@ -124,6 +124,8 @@ export default class AudioCapture {
     pulse = 0;
     /** 5-second energy relative to 30s average. High = sustained loud section. */
     vibe = 0;
+    /** max(1-second energy, 10-second energy) divided by all-time max 10-second energy. High = energetic moment.  */
+    mood = 0;
 
     /** @deprecated Use `momentary` instead. */
     get level(): number {
@@ -254,6 +256,7 @@ export default class AudioCapture {
             this.minThirtySecond.value,
             this.maxThirtySecond.value
         );
+        this.mood = Math.max(this.second, this.tenSecond) / Math.max(0.001, this.maxTenSecond.value);
 
         this.rafId = requestAnimationFrame(this.pump);
     };

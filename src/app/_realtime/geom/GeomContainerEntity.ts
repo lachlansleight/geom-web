@@ -185,6 +185,11 @@ export default class GeomContainerEntity extends RealtimeEntity {
             this.config.hue =
                 AudioCapture.instance.pulse * 0.3 + 0.45 + AudioCapture.instance.flicker * 0.1;
             this.config.hue += this._hueOffset;
+            this.config.hue += AudioCapture.instance.mood
+
+            //TODO: this doesn't work unless we have a final offset CPU-side stage after the pattern stuff to
+            //      change the value sent to the setNow GPU kernel
+            this.config.radius += (AudioCapture.instance.pulse - 0.5) * 0.3;
         }
 
         // Pass updated config to the GPU renderer
