@@ -8,7 +8,7 @@ import useCameraControls from "_realtime/engine/cameraControls";
 import RealtimeInteractor from "_realtime/engine/interaction/interactor";
 import useKeyboard from "_lib/hooks/useKeyboard";
 import GlobalApp from "_realtime/engine/systems/GlobalApp";
-import { createWorldReferenceGrid } from "_realtime/engine/worldReferenceGrid";
+import WorldReferenceGridEntity from "_realtime/engine/worldReferenceGrid";
 import TunnelPolylineDebug from "_realtime/engine/tunnelPolylineDebug";
 import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import GeomContainerEntity from "_realtime/geom/GeomContainerEntity";
@@ -168,7 +168,6 @@ const Renderer = (): JSX.Element => {
 
         try {
             new GlobalApp(renderer, orthoCam, perspCam, scene);
-            scene.add(createWorldReferenceGrid());
             setHasGlobalAppInstance(true);
         } catch (e: any) {
             console.log("global app already exists, why are we we-triggering this?");
@@ -233,6 +232,12 @@ const Renderer = (): JSX.Element => {
             initialWidth: screenDimensions.width,
             initialHeight: screenDimensions.height,
         });
+
+        // Grid scrolls with the active pattern's translation, wrapping by cell size
+        const worldGrid = new WorldReferenceGridEntity(
+            () => geomEntity.config.translationPerSecond
+        );
+        worldGrid.init();
 
         // Async init
         geomEntity
