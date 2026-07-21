@@ -20,7 +20,6 @@ export default function MainPage() {
     return (
         <>
             <Header />
-            <p>Hello</p>
             <Renderer />
         </>
     );

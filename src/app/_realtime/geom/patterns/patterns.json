@@ -2,7 +2,7 @@
     {
         "name": "Reverse Dissolve",
         "camera": {
-            "defaultZoom": 0.5736,
+            "defaultZoom": 0.4659,
             "orbitCenter": [0, 0, 20],
             "lookAtAmount": 1.0,
             "radius": { "center": 14, "amplitude": 5, "period": 30, "phase": 0 },

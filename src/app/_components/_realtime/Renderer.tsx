@@ -177,7 +177,25 @@ const Renderer = (): JSX.Element => {
 
     useEffect(() => {
         if (!hasGlobalAppInstance) return;
-        GlobalApp.instance.renderer.setSize(screenDimensions.width, screenDimensions.height);
+        const { width, height } = screenDimensions;
+        if (width <= 0 || height <= 0) return;
+
+        GlobalApp.instance.renderer.setSize(width, height);
+
+        const persp = GlobalApp.instance.perspCam;
+        persp.aspect = width / height;
+        persp.updateProjectionMatrix();
+
+        const ortho = GlobalApp.instance.orthoCam;
+        const cameraSize = {
+            x: 0.001 * width,
+            y: 0.001 * height,
+        };
+        ortho.left = -cameraSize.x * 0.5;
+        ortho.right = cameraSize.x * 0.5;
+        ortho.top = cameraSize.y * 0.5;
+        ortho.bottom = -cameraSize.y * 0.5;
+        ortho.updateProjectionMatrix();
     }, [hasGlobalAppInstance, screenDimensions]);
 
     // Set up the raycaster
@@ -312,7 +330,7 @@ const Renderer = (): JSX.Element => {
 
     return (
         <div
-            className={`h-screen w-screen overflow-hidden`}
+            className="fixed inset-0 overflow-hidden"
             style={{
                 cursor: cursor,
             }}

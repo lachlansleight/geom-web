@@ -24,11 +24,11 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en">
+        <html lang="en" className="h-full overflow-hidden">
             <body
-                className={`bg-neutral-500 text-white ${abyssincina.variable} ${aleo.variable} ${jetbrains.variable}`}
+                className={`h-full overflow-hidden bg-neutral-500 text-white ${abyssincina.variable} ${aleo.variable} ${jetbrains.variable}`}
             >
-                <div className="w-full mx-auto stretch font-jetbrains">{children}</div>
+                <div className="h-full w-full font-jetbrains">{children}</div>
             </body>
         </html>
     );
