@@ -3,11 +3,20 @@
 import Link from "next/link";
 import { useState } from "react";
 import AudioCapture from "_realtime/engine/systems/AudioCapture";
+import FreecamEntity from "_realtime/camera/FreecamEntity";
 import useAnimationFrame from "_lib/hooks/useAnimationFrame";
 
 const Header = (): JSX.Element => {
     const [audioActive, setAudioActive] = useState(false);
     const [audioLevel, setAudioLevel] = useState([0]);
+    const [freecam, setFreecam] = useState(false);
+
+    const setFreecamMode = (on: boolean) => {
+        const entity = FreecamEntity.instance;
+        if (!entity) return;
+        entity.setEnabled(on);
+        setFreecam(on);
+    };
 
     const toggleAudio = async () => {
         const capture = AudioCapture.instance;
@@ -41,6 +50,28 @@ const Header = (): JSX.Element => {
                 <span className="text-neutral-800">A Realtime Site</span>
             </Link>
             <div className="flex items-center justify-end gap-2">
+                <div className="flex items-center gap-2 mr-2 text-xs">
+                    <button
+                        onClick={() => setFreecamMode(false)}
+                        className={`underline underline-offset-2 transition-colors ${
+                            !freecam
+                                ? "text-yellow-500 text-opacity-40"
+                                : "text-neutral-700 hover:text-neutral-500"
+                        }`}
+                    >
+                        auto cam
+                    </button>
+                    <button
+                        onClick={() => setFreecamMode(true)}
+                        className={`underline underline-offset-2 transition-colors ${
+                            freecam
+                                ? "text-yellow-500 text-opacity-40"
+                                : "text-neutral-700 hover:text-neutral-500"
+                        }`}
+                    >
+                        freecam
+                    </button>
+                </div>
                 {audioLevel.map((level, index) => (
                     <div
                         key={index}

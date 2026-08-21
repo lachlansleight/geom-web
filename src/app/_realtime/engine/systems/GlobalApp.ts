@@ -17,6 +17,10 @@ class GlobalApp {
 
     renderOrthographic = true;
 
+    /** When true, FreecamEntity has exclusive control of perspCam — the
+     *  pattern camera entities and the ortho->persp copy stand down. */
+    freecamActive = false;
+
     constructor(
         renderer: THREE.WebGLRenderer,
         orthoCam: THREE.OrthographicCamera,

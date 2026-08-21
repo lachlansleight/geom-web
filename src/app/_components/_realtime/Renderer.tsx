@@ -14,6 +14,7 @@ import RealtimeEntity from "_realtime/engine/entities/realtimeEntity";
 import GeomContainerEntity from "_realtime/geom/GeomContainerEntity";
 import CameraOrbitEntity from "_realtime/camera/CameraOrbitEntity";
 import CameraFloorFollowEntity from "_realtime/camera/CameraFloorFollowEntity";
+import FreecamEntity from "_realtime/camera/FreecamEntity";
 import GeomPatternManager from "_realtime/geom/patterns/GeomPatternManager";
 import SkyGradientEntity from "_realtime/sky/SkyGradientEntity";
 
@@ -227,6 +228,13 @@ const Renderer = (): JSX.Element => {
         const cameraFloorFollow = new CameraFloorFollowEntity();
         cameraFloorFollow.init();
 
+        // Manual freecam (toggled from the header). Seeds its orbit center from
+        // the orbit camera when that's the active driver.
+        const freecam = new FreecamEntity(() =>
+            cameraOrbit.enabled ? cameraOrbit.config.orbitCenter.clone() : null
+        );
+        freecam.init();
+
         // Create and initialize GeomEntity
         const geomEntity = new GeomContainerEntity({
             initialWidth: screenDimensions.width,
@@ -314,13 +322,6 @@ const Renderer = (): JSX.Element => {
             });
 
             tunnelPolylineDebugRef.current?.update(geomContainerRef.current);
-
-            const persp = GlobalApp.instance.perspCam;
-            console.log(
-                persp.position.x.toFixed(3),
-                persp.position.y.toFixed(3),
-                persp.position.z.toFixed(3)
-            );
 
             // Render scene
             GlobalApp.instance.renderer.render(

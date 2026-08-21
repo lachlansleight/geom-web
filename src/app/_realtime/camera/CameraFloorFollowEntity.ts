@@ -95,6 +95,7 @@ export default class CameraFloorFollowEntity extends RealtimeEntity {
 
     update(_time: number, deltaTime: number): void {
         if (!this.enabled) return;
+        if (GlobalApp.instance?.freecamActive) return;
         if (!this.geom) return;
 
         const camera = GlobalApp.instance?.perspCam;

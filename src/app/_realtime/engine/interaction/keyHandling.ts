@@ -1,4 +1,5 @@
 import GlobalApp from "_realtime/engine/systems/GlobalApp";
+import FreecamEntity from "_realtime/camera/FreecamEntity";
 import RealtimeInteractor from "./interactor";
 
 //this is all just for the nice pretty debug string :P
@@ -28,6 +29,12 @@ export const handleKey = (interator: RealtimeInteractor, e: KeyboardEvent) => {
 
     //no longer super well supported, but it's nice not having to worry about this when switching OSs
     const ctrlCmd = navigator.platform.includes("Win") ? e.ctrlKey : e.metaKey;
+
+    // Freecam owns the keyboard while active (WASD flight, 'p' to save location)
+    if (GlobalApp.instance.freecamActive) {
+        FreecamEntity.instance?.handleKey(e);
+        return;
+    }
 
     //just for fun :D
     if (capitalKey === "ARROWLEFT" && e.type === "keydown") {

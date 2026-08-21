@@ -96,6 +96,7 @@ export default class CameraOrbitEntity extends RealtimeEntity {
 
     update(_time: number, deltaTime: number): void {
         if (!this.enabled) return;
+        if (GlobalApp.instance?.freecamActive) return;
         if (!this.config.playing) return;
 
         const camera = GlobalApp.instance?.perspCam;
