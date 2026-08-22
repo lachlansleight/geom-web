@@ -21,11 +21,14 @@ const ORBIT_SENSITIVITY = 0.002;
 const PAN_SENSITIVITY = 0.0006;
 /** Log-radius change per wheel delta unit */
 const ZOOM_SENSITIVITY = 0.0012;
+/** Left+right chord drag: 500px of vertical movement halves/doubles the zoom */
+const FOCAL_ZOOM_SENSITIVITY = Math.LN2 / 500;
 
 // Damping rates (per second) — higher is snappier. Applied as 1 - exp(-rate * dt).
 const ORBIT_DAMPING = 3;
 const PAN_DAMPING = 3;
 const ZOOM_DAMPING = 1;
+const FOCAL_ZOOM_DAMPING = 4;
 /** How quickly fly velocity approaches its target (accel and decel) */
 const MOVE_DAMPING = 3;
 
@@ -34,6 +37,9 @@ const FAST_FLY_MULTIPLIER = 5;
 
 const MIN_RADIUS = 0.25;
 const MAX_RADIUS = 800;
+
+const MIN_FOCAL_ZOOM = 0.1;
+const MAX_FOCAL_ZOOM = 20;
 /** Keep phi away from the poles so lookAt never degenerates */
 const PHI_EPSILON = 0.05;
 
@@ -48,6 +54,7 @@ const PHI_EPSILON = 0.05;
  *  - left drag: orbit around the center point
  *  - middle drag: pan the orbit center in the camera plane
  *  - wheel: dolly (change orbit radius)
+ *  - left+right drag up/down: focal zoom (perspCam.zoom), 500px = half/double
  *  - hold right: fly with WASD (+ space up, ctrl/Q down, shift = 5x speed).
  *    Mouse-look while flying rotates about the camera; the orbit center stays
  *    pinned at the current radius along the view direction so orbit controls
@@ -71,6 +78,8 @@ export default class FreecamEntity extends RealtimeEntity {
     private phi = Math.PI / 2;
     private targetLogRadius = Math.log(20);
     private logRadius = Math.log(20);
+    private targetLogZoom = 0;
+    private logZoom = 0;
 
     private velocity = new THREE.Vector3();
     private flying = false;
@@ -127,6 +136,9 @@ export default class FreecamEntity extends RealtimeEntity {
         );
         this.center.copy(center);
         this.targetCenter.copy(center);
+        this.logZoom = this.targetLogZoom = Math.log(
+            THREE.MathUtils.clamp(camera.zoom, MIN_FOCAL_ZOOM, MAX_FOCAL_ZOOM)
+        );
         this.velocity.set(0, 0, 0);
     }
 
@@ -142,8 +154,19 @@ export default class FreecamEntity extends RealtimeEntity {
         }
     }
 
-    handleMouseMove(deltaX: number, deltaY: number, draggingBtn: number): void {
+    handleMouseMove(deltaX: number, deltaY: number, draggingBtn: number, buttons: number): void {
         if (!this.enabled) return;
+
+        // Left+right chord: slow focal zoom. Drag up to zoom in, down to zoom
+        // out; 500px doubles/halves. Takes priority over orbit and mouse-look.
+        if ((buttons & 1) !== 0 && (buttons & 2) !== 0) {
+            this.targetLogZoom = THREE.MathUtils.clamp(
+                this.targetLogZoom - deltaY * FOCAL_ZOOM_SENSITIVITY,
+                Math.log(MIN_FOCAL_ZOOM),
+                Math.log(MAX_FOCAL_ZOOM)
+            );
+            return;
+        }
 
         if (draggingBtn === 0) {
             // Orbit around the center
@@ -303,5 +326,10 @@ export default class FreecamEntity extends RealtimeEntity {
         camera.position.copy(this.center).add(offset);
         camera.up.set(0, 1, 0);
         camera.lookAt(this.center);
+
+        this.logZoom +=
+            (this.targetLogZoom - this.logZoom) * (1 - Math.exp(-FOCAL_ZOOM_DAMPING * deltaTime));
+        camera.zoom = Math.exp(this.logZoom);
+        camera.updateProjectionMatrix();
     }
 }

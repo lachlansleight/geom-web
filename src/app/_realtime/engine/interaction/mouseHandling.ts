@@ -6,7 +6,12 @@ import FreecamEntity from "_realtime/camera/FreecamEntity";
 
 export const handleMouseMove = (interactor: RealtimeInteractor, e: React.MouseEvent) => {
     if (GlobalApp.instance?.freecamActive) {
-        FreecamEntity.instance?.handleMouseMove(e.movementX, e.movementY, interactor.draggingBtn);
+        FreecamEntity.instance?.handleMouseMove(
+            e.movementX,
+            e.movementY,
+            interactor.draggingBtn,
+            e.buttons
+        );
         return;
     }
 

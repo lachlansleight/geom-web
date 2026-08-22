@@ -151,14 +151,14 @@ const useCameraControls = (config?: Partial<CameraControlsConfig>) => {
 
             GlobalApp.instance.orthoCam.updateProjectionMatrix();
 
-            // While freecam is active it owns perspCam's transform; keep the
-            // zoom copy so the FOV doesn't jump when toggling.
+            // While freecam is active it owns perspCam's transform and zoom
+            // (it seeds from the current values on enable, so nothing jumps).
             if (!GlobalApp.instance.freecamActive) {
                 GlobalApp.instance.perspCam.position.copy(GlobalApp.instance.orthoCam.position);
                 GlobalApp.instance.perspCam.rotation.copy(GlobalApp.instance.orthoCam.rotation);
+                GlobalApp.instance.perspCam.zoom = GlobalApp.instance.orthoCam.zoom;
+                GlobalApp.instance.perspCam.updateProjectionMatrix();
             }
-            GlobalApp.instance.perspCam.zoom = GlobalApp.instance.orthoCam.zoom;
-            GlobalApp.instance.perspCam.updateProjectionMatrix();
         },
         [targetZoom, targetPos, fullConfig]
     );
