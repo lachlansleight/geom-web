@@ -93,6 +93,20 @@ export interface GeomPattern {
         noiseScale?: number;
         noiseStrength?: number;
         dissolveForwardBias?: number;
+        /** Spatial scale of the particle force-field noise. */
+        particleNoiseScale?: number;
+        /** Strength of the particle force field. */
+        particleForceStrength?: number;
+        /** Seconds over which the particle force ramps in with age. */
+        particleRampTime?: number;
+        /** Velocity damping applied to dissolve particles. */
+        particleDamping?: number;
+        /** Time scale of the particle force-field noise. */
+        particleNoiseTimeScale?: number;
+        /** Minimum size particles shrink to (fraction). */
+        particleMinSize?: number;
+        /** Seconds over which particles shrink to minimum size. */
+        particleShrinkTime?: number;
         /** Particle age (s) at which the noise color shift starts. Range 0-10. */
         noiseColorStartAge?: number;
         /** Seconds after start age over which the color factors blend in. Range 0-10. */

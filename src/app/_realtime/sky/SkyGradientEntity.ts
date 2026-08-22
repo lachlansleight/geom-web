@@ -47,7 +47,7 @@ export interface SkyGradientConfig {
 }
 
 const DEFAULT_CONFIG: SkyGradientConfig = {
-    colorTop: new THREE.Color(20 / 255, 20 / 255, 25 / 255),
+    colorTop: new THREE.Color(0, 0, 0), //new THREE.Color(20 / 255, 20 / 255, 25 / 255),
     colorBottom: new THREE.Color(0, 0, 0),
 };
 

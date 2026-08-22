@@ -17,6 +17,7 @@ import CameraFloorFollowEntity from "_realtime/camera/CameraFloorFollowEntity";
 import FreecamEntity from "_realtime/camera/FreecamEntity";
 import GeomPatternManager from "_realtime/geom/patterns/GeomPatternManager";
 import SkyGradientEntity from "_realtime/sky/SkyGradientEntity";
+import TweakPanel from "./TweakPanel/TweakPanel";
 
 export type RealtimeHoverTarget = {
     type: "node" | "port" | "connection";
@@ -33,6 +34,12 @@ const Renderer = (): JSX.Element => {
     const [cursor, setCursor] = useState("");
     const patternManager = useRef<GeomPatternManager | null>(null);
     const geomContainerRef = useRef<GeomContainerEntity | null>(null);
+    // Refs don't trigger renders — this flips once the async geom init finishes
+    // so the tweak panel can mount.
+    const [engineReady, setEngineReady] = useState(false);
+    const [tweakPanelOpen, setTweakPanelOpen] = useState(false);
+    // Bumped on pattern switch so an open tweak panel re-seeds its values
+    const [patternVersion, setPatternVersion] = useState(0);
     const tunnelPolylineDebugRef = useRef<TunnelPolylineDebug | null>(null);
     const [patternOverlay, setPatternOverlay] = useState<{
         name: string;
@@ -132,7 +139,8 @@ const Renderer = (): JSX.Element => {
 
         const scene = new THREE.Scene();
         // scene.background = new THREE.Color("rgb(20, 20, 25)");
-        scene.background = new THREE.Color("rgb(10, 10, 13)");
+        // scene.background = new THREE.Color("rgb(10, 10, 13)");
+        scene.background = new THREE.Color("rgb(0, 0, 0)");
         const cameraSize = {
             x: 0.001 * screenDimensions.width,
             y: 0.001 * screenDimensions.height,
@@ -242,10 +250,10 @@ const Renderer = (): JSX.Element => {
         });
 
         // Grid scrolls with the active pattern's translation, wrapping by cell size
-        const worldGrid = new WorldReferenceGridEntity(
-            () => geomEntity.config.translationPerSecond
-        );
-        worldGrid.init();
+        // const worldGrid = new WorldReferenceGridEntity(
+        //     () => geomEntity.config.translationPerSecond
+        // );
+        // worldGrid.init();
 
         // Async init
         geomEntity
@@ -268,6 +276,7 @@ const Renderer = (): JSX.Element => {
                 );
                 pm.init();
                 patternManager.current = pm;
+                setEngineReady(true);
                 showPatternOverlay(
                     pm.patterns[pm.currentIndex].name,
                     pm.currentIndex,
@@ -284,6 +293,22 @@ const Renderer = (): JSX.Element => {
 
     useKeyboard(
         (e: KeyboardEvent) => {
+            // Don't drive the engine while typing into form elements
+            const target = e.target as HTMLElement | null;
+            if (
+                target &&
+                (target.tagName === "INPUT" ||
+                    target.tagName === "TEXTAREA" ||
+                    target.isContentEditable)
+            ) {
+                return;
+            }
+
+            if (e.type === "keydown" && e.key === "`") {
+                setTweakPanelOpen(open => !open);
+                return;
+            }
+
             if (!interactor.current) return;
             interactor.current.handleKey(e);
 
@@ -293,6 +318,7 @@ const Renderer = (): JSX.Element => {
                 if (e.key === "ArrowRight") {
                     flushZoomSave();
                     pm.nextPattern();
+                    setPatternVersion(v => v + 1);
                     showPatternOverlay(
                         pm.patterns[pm.currentIndex].name,
                         pm.currentIndex,
@@ -301,6 +327,7 @@ const Renderer = (): JSX.Element => {
                 } else if (e.key === "ArrowLeft") {
                     flushZoomSave();
                     pm.previousPattern();
+                    setPatternVersion(v => v + 1);
                     showPatternOverlay(
                         pm.patterns[pm.currentIndex].name,
                         pm.currentIndex,
@@ -362,6 +389,18 @@ const Renderer = (): JSX.Element => {
                     </div>
                 </div>
             )}
+
+            {engineReady &&
+                tweakPanelOpen &&
+                patternManager.current &&
+                geomContainerRef.current && (
+                    <TweakPanel
+                        patternManager={patternManager.current}
+                        geomContainer={geomContainerRef.current}
+                        patternVersion={patternVersion}
+                        setZoom={zoom => cameraControlsRef.current.setZoom(zoom)}
+                    />
+                )}
 
             <canvas
                 width={screenDimensions.width}

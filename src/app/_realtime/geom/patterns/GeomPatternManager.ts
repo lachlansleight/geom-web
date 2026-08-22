@@ -18,8 +18,8 @@ export default class GeomPatternManager extends RealtimeEntity {
     patterns: GeomPattern[];
     currentIndex: number = 0;
 
-    private cameraOrbit: CameraOrbitEntity;
-    private cameraFloorFollow: CameraFloorFollowEntity;
+    readonly cameraOrbit: CameraOrbitEntity;
+    readonly cameraFloorFollow: CameraFloorFollowEntity;
     private geomContainer: GeomContainerEntity;
     private setZoom?: (zoom: number) => void;
 
@@ -153,6 +153,16 @@ export default class GeomPatternManager extends RealtimeEntity {
         config.quantiseHue = g.quantiseHue ?? 0;
         config.quantiseSaturation = g.quantiseSaturation ?? 0;
         config.quantiseBrightness = g.quantiseBrightness ?? 0;
+
+        // Particle force field: always-assign with the GeomConfig defaults so
+        // patterns that omit these keys don't inherit from the previous pattern.
+        config.particleNoiseScale = g.particleNoiseScale ?? 0.3;
+        config.particleForceStrength = g.particleForceStrength ?? 3;
+        config.particleRampTime = g.particleRampTime ?? 6.0;
+        config.particleDamping = g.particleDamping ?? 0.1;
+        config.particleNoiseTimeScale = g.particleNoiseTimeScale ?? 1;
+        config.particleMinSize = g.particleMinSize ?? 0.3;
+        config.particleShrinkTime = g.particleShrinkTime ?? 5.0;
 
         if (g.translationPerSecond) {
             config.translationPerSecond.set(...g.translationPerSecond);
