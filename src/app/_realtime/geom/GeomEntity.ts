@@ -77,6 +77,10 @@ export interface GeomConfig {
     // Screen-space bloom
     bloomThreshold: number;
     bloomIntensity: number;
+    // HSV quantisation (integer step counts, 0 = channel not quantised)
+    quantiseHue: number;
+    quantiseSaturation: number;
+    quantiseBrightness: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -130,6 +134,9 @@ const DEFAULT_CONFIG: GeomConfig = {
     noiseBrightnessFactor: 1.0,
     bloomThreshold: 1.0,
     bloomIntensity: 0.0, // 0 = bloom off
+    quantiseHue: 0,
+    quantiseSaturation: 0,
+    quantiseBrightness: 0,
 };
 
 export default class GeomEntity extends RealtimeEntity {
@@ -1007,15 +1014,16 @@ export default class GeomEntity extends RealtimeEntity {
     private updateVertexGenUniforms(): void {
         if (!this.device || !this.vertexGenUniformBuffer) return;
 
-        // New layout (6 vec4s = 24 floats = 96 bytes):
+        // New layout (7 vec4s = 28 floats = 112 bytes):
         // cubeRotateAndCrunch: vec4 (xyz=cubeRotateAmount, w=endCrunchSlices)
         // timeAndSlices: vec4<u32> (x=currentSlice, y=sliceCount, z=minShowSlice, w=maxShowSlice)
         // offsetParams: vec4 (x=offsetFalloff, y=offsetRadius, z=time, w=unused)
         // offsetColor: vec4 (xyz=offsetColor, w=unused)
         // offsetSize: vec4 (xyz=offsetSize, w=unused)
         // offsetSpinAndSpread: vec4 (xyz=offsetSpin, w=offsetSpread)
+        // quantise: vec4<u32> (x=quantiseHue, y=quantiseSaturation, z=quantiseBrightness, w=unused)
 
-        const data = new Float32Array(24);
+        const data = new Float32Array(28);
 
         // cubeRotateAndCrunch (offset 0)
         data[0] = this.config.cubeRotateAmount.x;
@@ -1053,6 +1061,12 @@ export default class GeomEntity extends RealtimeEntity {
         data[21] = 0;
         data[22] = 0;
         data[23] = 0; // offsetSpread
+
+        // quantise (offset 24) - written as u32, 0 = channel not quantised
+        uint32View[24] = Math.max(0, Math.round(this.config.quantiseHue));
+        uint32View[25] = Math.max(0, Math.round(this.config.quantiseSaturation));
+        uint32View[26] = Math.max(0, Math.round(this.config.quantiseBrightness));
+        uint32View[27] = 0;
 
         this.device.queue.writeBuffer(this.vertexGenUniformBuffer, 0, data);
     }

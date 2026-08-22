@@ -35,6 +35,7 @@ struct VertexGenUniforms {
     offsetColor: vec4<f32>,            // xyz=offsetColor, w=unused
     offsetSize: vec4<f32>,             // xyz=offsetSize, w=unused
     offsetSpinAndSpread: vec4<f32>,    // xyz=offsetSpin, w=offsetSpread
+    quantise: vec4<u32>,               // x=quantiseHue, y=quantiseSaturation, z=quantiseBrightness, w=unused (0 = channel not quantised)
 }
 
 @group(0) @binding(0) var<storage, read> sliceBuffer: array<CubeTunnelSlice>;
@@ -92,6 +93,22 @@ fn eulerRotateReverse(input: vec3<f32>, eulers: vec3<f32>) -> vec3<f32> {
     );
 
     return rotZ * rotY * rotX * input;
+}
+
+fn quantiseChannel(v: f32, steps: u32) -> f32 {
+    if (steps == 0u) {
+        return v;
+    }
+    let s = f32(steps);
+    return round(v * s) / s;
+}
+
+fn quantiseHsv(c: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(
+        quantiseChannel(c.x, uniforms.quantise.x),
+        quantiseChannel(c.y, uniforms.quantise.y),
+        quantiseChannel(c.z, uniforms.quantise.z)
+    );
 }
 
 fn hsv2rgb(c: vec3<f32>) -> vec3<f32> {
@@ -275,8 +292,8 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>, @builtin(workgroup_i
     }
 
     // Generate vertices for 4 faces
-    let colorRgb = hsv2rgb(thisColor);
-    let lastColorRgb = hsv2rgb(lastColor);
+    let colorRgb = hsv2rgb(quantiseHsv(thisColor));
+    let lastColorRgb = hsv2rgb(quantiseHsv(lastColor));
 
     let startVertexId = (sliceId * 64u + cubeId) * 24u;
 

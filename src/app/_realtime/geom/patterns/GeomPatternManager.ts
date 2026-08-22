@@ -149,6 +149,11 @@ export default class GeomPatternManager extends RealtimeEntity {
         config.bloomThreshold = g.bloomThreshold ?? 1.0;
         config.bloomIntensity = g.bloomIntensity ?? 0.0;
 
+        // HSV quantisation: same always-assign treatment; off unless the pattern opts in.
+        config.quantiseHue = g.quantiseHue ?? 0;
+        config.quantiseSaturation = g.quantiseSaturation ?? 0;
+        config.quantiseBrightness = g.quantiseBrightness ?? 0;
+
         if (g.translationPerSecond) {
             config.translationPerSecond.set(...g.translationPerSecond);
         }

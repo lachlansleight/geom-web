@@ -36,7 +36,10 @@
             "noiseSaturationFactor": 0.0,
             "noiseBrightnessFactor": 1.0,
             "bloomThreshold": 1.0,
-            "bloomIntensity": 1.0
+            "bloomIntensity": 1.0,
+            "quantiseHue": 5,
+            "quantiseSaturation": 0,
+            "quantiseBrightness": 3
         },
         "animators": {
             "radius": {
@@ -179,7 +182,10 @@
             "particleForceStrength": 3,
             "particleNoiseScale": 0.5,
             "particleNoiseTimeScale": 0.3,
-            "particleDamping": 0.0
+            "particleDamping": 0.0,
+            "quantiseHue": 0,
+            "quantiseSaturation": 0,
+            "quantiseBrightness": 0
         },
         "animators": {
             "radius": {
@@ -320,7 +326,10 @@
             "particleForceStrength": 3,
             "particleNoiseScale": 0.5,
             "particleNoiseTimeScale": 0.3,
-            "particleDamping": 0.0
+            "particleDamping": 0.0,
+            "quantiseHue": 0,
+            "quantiseSaturation": 0,
+            "quantiseBrightness": 0
         },
         "animators": {
             "radius": {

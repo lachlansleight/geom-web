@@ -60,6 +60,10 @@ export interface GeomConfig {
     // Screen-space bloom
     bloomThreshold: number;
     bloomIntensity: number;
+    // HSV quantisation (integer step counts, 0 = channel not quantised)
+    quantiseHue: number;
+    quantiseSaturation: number;
+    quantiseBrightness: number;
     // Canvas dimensions (passed from parent)
     initialWidth?: number;
     initialHeight?: number;
@@ -113,6 +117,9 @@ const DEFAULT_CONFIG: GeomConfig = {
     noiseBrightnessFactor: 1.0,
     bloomThreshold: 1.0,
     bloomIntensity: 0.0, // 0 = bloom off
+    quantiseHue: 0,
+    quantiseSaturation: 0,
+    quantiseBrightness: 0,
 };
 
 export default class GeomContainerEntity extends RealtimeEntity {

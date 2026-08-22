@@ -107,6 +107,12 @@ export interface GeomPattern {
         bloomThreshold?: number;
         /** Bloom strength added at composite. 0 = off (default). */
         bloomIntensity?: number;
+        /** Integer step count for hue quantisation before HSV→RGB. 0 = off (default). */
+        quantiseHue?: number;
+        /** Integer step count for saturation quantisation before HSV→RGB. 0 = off (default). */
+        quantiseSaturation?: number;
+        /** Integer step count for brightness quantisation before HSV→RGB. 0 = off (default). */
+        quantiseBrightness?: number;
     };
 
     animators: {
